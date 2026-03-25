@@ -17,16 +17,24 @@ func Remove_Unwanted(str string) string {
 
 }
 
-func GetConfigName(c *gin.Context, jsondata_s string) (string, error) {
+func GetConfigName(c *gin.Context, jsondata_s string) (string, string, error) {
 
-	config_name := gjson.Get(jsondata_s, "config").String()
-	config_name = Remove_Unwanted(config_name)
+	jtype := gjson.Get(jsondata_s, "type").String()
+	jtype = Remove_Unwanted(jtype)
 
-	if config_name == "" {
+        if jtype == "" {
 
-		return "", fmt.Errorf("No 'config' specified in POST request from %s.", c.ClientIP())
+                return "", "", fmt.Errorf("No 'type' specified in POST request from %s.", c.ClientIP())
+        }
+
+	name := gjson.Get(jsondata_s, "name").String()
+	name = Remove_Unwanted(name)
+
+	if name == "" {
+
+		return "", "", fmt.Errorf("No 'name' specified in POST request from %s.", c.ClientIP())
 	}
 
-	return config_name, nil
+	return name, jtype,  nil
 
 }

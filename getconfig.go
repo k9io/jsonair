@@ -11,7 +11,8 @@ import (
 func GetConfig(c *gin.Context) {
 
 	var err error
-	var config_name string
+	var name string
+	var jtype string
 	var config_json string
 
 	uuid := c.MustGet("uuid").(string) /* gin will panic if this isn't there (as it should) */
@@ -21,7 +22,7 @@ func GetConfig(c *gin.Context) {
 
 	c.Header("Content-Type", "application/json; charset=utf-8")
 
-	config_name, err = GetConfigName(c, jsondata_s)
+	name, jtype, err = GetConfigName(c, jsondata_s)
 
 	if err != nil {
 
@@ -32,9 +33,9 @@ func GetConfig(c *gin.Context) {
 
 	}
 
-	Logger(INFO, "%s requested configuration for %s", c.ClientIP(), config_name)
+	Logger(INFO, "%s requested configuration for %s", c.ClientIP(), name)
 
-	config_json, err = SQL_GetConfig(uuid, config_name)
+	config_json, err = SQL_GetConfig(uuid, name, jtype)
 
 	if err != nil {
 

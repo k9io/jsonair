@@ -44,11 +44,11 @@ func SQL_Auth(client_uuid string, api_key string) bool {
 	return true
 }
 
-func SQL_GetConfig(uuid string, config_name string) (string, error) {
+func SQL_GetConfig(uuid string, name string, jtype string) (string, error) {
 
 	var config_json string
 
-	err := Env.DB.QueryRow("SELECT `json` FROM `configurations` WHERE `uuid`=? AND `name`=? LIMIT 1", uuid, config_name).Scan(&config_json)
+	err := Env.DB.QueryRow("SELECT `json` FROM `configurations` WHERE `uuid`=? AND `name`=? AND `type`=? LIMIT 1", uuid, name, jtype ).Scan(&config_json)
 
 	if err != nil && err != sql.ErrNoRows {
 
@@ -58,7 +58,7 @@ func SQL_GetConfig(uuid string, config_name string) (string, error) {
 
 	if err == sql.ErrNoRows {
 
-		return "", fmt.Errorf("Configuration '%s' not found for uuid %s'", config_name, uuid)
+		return "", fmt.Errorf("Configuration '%s' not found for uuid %s'", name, uuid)
 
 	}
 
@@ -66,14 +66,13 @@ func SQL_GetConfig(uuid string, config_name string) (string, error) {
 
 }
 
-func SQL_GetSimple(uuid string, config_name string, ja_type string) (string, error) {
+func SQL_GetSimple(uuid string, name string, jtype string, ja_type string) (string, error) {
 
 	var reload string
 
-	query := fmt.Sprintf("SELECT `%s` FROM `configurations` WHERE `uuid`=? AND `name`=? LIMIT 1", ja_type)
+	query := fmt.Sprintf("SELECT `%s` FROM `configurations` WHERE `uuid`=? AND `name`=? AND `type`=? LIMIT 1", ja_type)
 
-	//err := Env.DB.QueryRow("SELECT `?` FROM `configurations` WHERE `uuid`=? AND `name`=? LIMIT 1", ja_type, uuid, config_name).Scan(&reload)
-	err := Env.DB.QueryRow(query, uuid, config_name).Scan(&reload)
+	err := Env.DB.QueryRow(query, uuid, name, jtype).Scan(&reload)
 
 	if err != nil && err != sql.ErrNoRows {
 
@@ -83,7 +82,7 @@ func SQL_GetSimple(uuid string, config_name string, ja_type string) (string, err
 
 	if err == sql.ErrNoRows {
 
-		return "", fmt.Errorf("Reload for '%s' not found for uuid %s'", config_name, uuid)
+		return "", fmt.Errorf("Reload for '%s' not found for uuid %s'", name, uuid)
 
 	}
 

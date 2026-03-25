@@ -11,7 +11,8 @@ import (
 func GetDebug(c *gin.Context) {
 
 	var err error
-	var config_name string
+	var name string
+	var jtype string
 	var debug string
 
 	uuid := c.MustGet("uuid").(string) /* gin will panic if this isn't there (as it should) */
@@ -21,7 +22,7 @@ func GetDebug(c *gin.Context) {
 
 	c.Header("Content-Type", "application/json; charset=utf-8")
 
-	config_name, err = GetConfigName(c, jsondata_s)
+	name, jtype, err = GetConfigName(c, jsondata_s)
 
 	if err != nil {
 
@@ -32,9 +33,9 @@ func GetDebug(c *gin.Context) {
 
 	}
 
-	Logger(INFO, "%s requested debug for %s", c.ClientIP(), config_name)
+	Logger(INFO, "%s requested debug for %s", c.ClientIP(), name)
 
-	debug, err = SQL_GetSimple(uuid, config_name, "debug")
+	debug, err = SQL_GetSimple(uuid, name, jtype, "debug")
 
 	if err != nil {
 

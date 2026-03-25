@@ -10,7 +10,8 @@ import (
 func GetReload(c *gin.Context) {
 
 	var err error
-	var config_name string
+	var name string
+	var jtype string
 	var reload string
 
 	uuid := c.MustGet("uuid").(string) /* gin will panic if this isn't there (as it should) */
@@ -20,7 +21,7 @@ func GetReload(c *gin.Context) {
 
 	c.Header("Content-Type", "application/json; charset=utf-8")
 
-	config_name, err = GetConfigName(c, jsondata_s)
+	name, jtype, err = GetConfigName(c, jsondata_s)
 
 	if err != nil {
 
@@ -31,9 +32,9 @@ func GetReload(c *gin.Context) {
 
 	}
 
-	Logger(INFO, "%s requested reload for %s", c.ClientIP(), config_name)
+	Logger(INFO, "%s requested reload for %s", c.ClientIP(), name)
 
-	reload, err = SQL_GetSimple(uuid, config_name, "reload")
+	reload, err = SQL_GetSimple(uuid, name, jtype, "reload")
 
 	if err != nil {
 
