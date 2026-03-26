@@ -1,14 +1,21 @@
+/**
+ ** Copyright (C) 2026 Key9, Inc <k9.io>
+ ** Copyright (C) 2026 Champ Clark III <cclark@k9.io>
+ **
+ ** This file is part of the JSONAir.
+ **
+ ** This source code is licensed under the MIT license found in the
+ ** LICENSE file in the root directory of this source tree.
+ **
+ **/
+
 package main
 
-/* Notes:
-
-   Droppriv needed
-
-*/
-
 import (
-	//        "fmt"
+	"crypto/tls"
 	"io/ioutil"
+	"net"
+	"net/http"
 	"os"
 
 	"github.com/gin-gonic/gin"
@@ -30,12 +37,7 @@ func main() {
 
 	if Env.HTTP_MODE == "production" || Env.HTTP_MODE == "release" {
 
-		//                if debug.X.Load {
-		//                       logger.Syslog("debug", "[DEBUG_LOAD] Suppressing Logging.")
-		//                }
-
 		gin.SetMode("release")
-
 		gin.DefaultWriter = ioutil.Discard
 
 	} else {
@@ -60,26 +62,69 @@ func main() {
 
 		Logger(INFO, "JSONAir is up and listening for TLS traffic on %s.", Env.HTTP_LISTEN)
 
-		err := router.RunTLS(Env.HTTP_LISTEN, Env.HTTP_CERT, Env.HTTP_KEY)
+		cert, err := tls.LoadX509KeyPair(Env.HTTP_CERT, Env.HTTP_KEY)
 
 		if err != nil {
 
-			Logger(ERROR, "Cannot bind to %s or cannot open %s or %s [%v].", Env.HTTP_LISTEN, Env.HTTP_CERT, Env.HTTP_KEY, err)
+			Logger(ERROR, "Failed to load certificates: %v", err)
+			os.Exit(1)
+
+		}
+
+		tlsConfig := &tls.Config{
+
+			Certificates: []tls.Certificate{cert},
+		}
+
+		rawListener, err := net.Listen("tcp", Env.HTTP_LISTEN)
+
+		if err != nil {
+
+			Logger(ERROR, "Failed to bind to port '%s': %v", Env.HTTP_LISTEN, err)
+			os.Exit(1)
+
+		}
+
+		tlsListener := tls.NewListener(rawListener, tlsConfig)
+
+		DropPrivileges(Env.RUNAS)
+
+		Logger(INFO, "Listening on '%s' for TLS traffic as UID: %d.", Env.HTTP_LISTEN, os.Getuid())
+
+		server := &http.Server{Handler: router}
+
+		err = server.Serve(tlsListener)
+
+		if err != nil {
+
+			Logger(ERROR, "Server failed: %v", err)
 			os.Exit(1)
 
 		}
 
 	} else {
 
-		Logger(INFO, "JSONAir is up and listening for traffic on %s.", Env.HTTP_LISTEN)
-
-		err := router.Run(Env.HTTP_LISTEN)
+		ln, err := net.Listen("tcp", Env.HTTP_LISTEN)
 
 		if err != nil {
 
-			Logger(ERROR, "Cannot bind to %s [%v].", Env.HTTP_LISTEN, err)
+			Logger(ERROR, "Failed to bind to port '%s': %v", Env.HTTP_LISTEN, err)
 			os.Exit(1)
 
 		}
+
+		DropPrivileges(Env.RUNAS)
+
+		Logger(INFO, "Listening on '%s' for traffic as UID: %d.", Env.HTTP_LISTEN, os.Getuid())
+
+		err = http.Serve(ln, router)
+
+		if err != nil {
+
+			Logger(ERROR, "Server failed: %v", err)
+			os.Exit(1)
+
+		}
+
 	}
 }

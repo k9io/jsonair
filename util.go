@@ -1,10 +1,23 @@
+/**
+ ** Copyright (C) 2026 Key9, Inc <k9.io>
+ ** Copyright (C) 2026 Champ Clark III <cclark@k9.io>
+ **
+ ** This file is part of the JSONAir.
+ **
+ ** This source code is licensed under the MIT license found in the
+ ** LICENSE file in the root directory of this source tree.
+ **
+ **/
+
 package main
 
 import (
 	"fmt"
+	"os"
+	"os/user"
 	"regexp"
-
-	//	"net/http"
+	"strconv"
+	"syscall"
 
 	"github.com/gin-gonic/gin"
 	"github.com/tidwall/gjson"
@@ -22,10 +35,10 @@ func GetConfigName(c *gin.Context, jsondata_s string) (string, string, error) {
 	jtype := gjson.Get(jsondata_s, "type").String()
 	jtype = Remove_Unwanted(jtype)
 
-        if jtype == "" {
+	if jtype == "" {
 
-                return "", "", fmt.Errorf("No 'type' specified in POST request from %s.", c.ClientIP())
-        }
+		return "", "", fmt.Errorf("No 'type' specified in POST request from %s.", c.ClientIP())
+	}
 
 	name := gjson.Get(jsondata_s, "name").String()
 	name = Remove_Unwanted(name)
@@ -35,6 +48,49 @@ func GetConfigName(c *gin.Context, jsondata_s string) (string, string, error) {
 		return "", "", fmt.Errorf("No 'name' specified in POST request from %s.", c.ClientIP())
 	}
 
-	return name, jtype,  nil
+	return name, jtype, nil
 
+}
+
+func DropPrivileges(username string) {
+
+	current_uid := os.Getuid()
+
+	if current_uid != 0 {
+
+		Logger(NOTICE, "Not running as root. Not dropping privileges.")
+		return
+
+	}
+
+	Logger(NOTICE, "Dropping privileges to '%s'.", username)
+
+	u, err := user.Lookup(username)
+
+	if err != nil {
+
+		Logger(ERROR, "User lookup failed: %v", err)
+		os.Exit(1)
+
+	}
+
+	uid, _ := strconv.Atoi(u.Uid)
+	gid, _ := strconv.Atoi(u.Gid)
+
+	err = syscall.Setgid(gid)
+
+	if err != nil {
+
+		Logger(NOTICE, "'setgid' failed: %v", err)
+		os.Exit(1)
+
+	}
+
+	err = syscall.Setuid(uid)
+
+	if err != nil {
+
+		Logger(NOTICE, "'setuid' failed: %v", err)
+		os.Exit(1)
+	}
 }

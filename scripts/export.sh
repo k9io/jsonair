@@ -1,5 +1,7 @@
 #!/bin/bash
 
+export RUNAS="nobody"
+
 export MYSQL_USERNAME="sql_user_name"
 export MYSQL_PASSWORD="sql_password"
 export MYSQL_HOST="127.0.0.1"

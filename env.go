@@ -1,3 +1,14 @@
+/**
+ ** Copyright (C) 2026 Key9, Inc <k9.io>
+ ** Copyright (C) 2026 Champ Clark III <cclark@k9.io>
+ **
+ ** This file is part of the JSONAir.
+ **
+ ** This source code is licensed under the MIT license found in the
+ ** LICENSE file in the root directory of this source tree.
+ **
+ **/
+
 package main
 
 import (
@@ -12,6 +23,8 @@ import (
 
 type Environment_Struct struct {
 	DB *sql.DB
+
+	RUNAS string
 
 	MYSQL_USER  string
 	MYSQL_PASS  string
@@ -124,12 +137,27 @@ func LoadEnv() {
 		Logger(ERROR, "Invalid 'HTTP_MODE':  %s.  Valid 'http_modes' are 'release', 'debug', 'test' and 'production'.", Env.HTTP_MODE)
 	}
 
+	tmp = os.Getenv("HTTP_TLS")
+
+	if tmp == "true" {
+		Env.HTTP_TLS = true
+	} else {
+		Env.HTTP_TLS = false
+	}
+
 	/* -- Core stuff -- */
 
 	Env.AUTH_HEADER = os.Getenv("AUTH_HEADER")
 
 	if Env.AUTH_HEADER == "" {
 		Logger(ERROR, "AUTH_HEADER environment variable is not set.")
+		os.Exit(1)
+	}
+
+	Env.RUNAS = os.Getenv("RUNAS")
+
+	if Env.RUNAS == "" {
+		Logger(ERROR, "RUNAS environment variable is not set.")
 		os.Exit(1)
 	}
 
