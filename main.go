@@ -23,7 +23,10 @@ import (
 
 func main() {
 
-	Logger(INFO, "Starting JSONAir.")
+	Logger(BANNER, "-*> JSONAir! <*-")
+	Logger(BANNER, "Version: %s", Version)
+	Logger(BANNER, "Champ Clark III & The Key9, Inc. Team [https://k9.io]")
+	Logger(BANNER, "Copyright (C) 2026 Key9, Inc. et al.")
 
 	LoadEnv() /* Load environment variables */
 

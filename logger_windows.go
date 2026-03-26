@@ -59,28 +59,33 @@ func Logger(log_type int, format string, args ...interface{}) {
 	blue := color.New(color.FgBlue).SprintFunc()
 	cyan := color.New(color.FgCyan).SprintFunc()
 	white := color.New(color.FgWhite).SprintFunc()
+	magenta := color.New(color.FgMagenta).SprintFunc()
 
 	switch log_type {
 
 	case INFO:
 
-		fmt.Printf("%s    :%s:%s:%s:\t%s\n", white("Info"), cyan(self), green(__FILE__), green(__LINE__), Message)
+		fmt.Printf("%s    :%s:%s:%s:\t%s\n", white("Info"), cyan(self), green(__FILE__), green(__LINE__), white(Message))
 
 	case WARN:
 
-		fmt.Printf("%s :%s:%s:%s:\t%s\n", yellow("Warning"), cyan(self), green(__FILE__), green(__LINE__), Message)
+		fmt.Printf("%s :%s:%s:%s:\t%s\n", yellow("Warning"), cyan(self), green(__FILE__), green(__LINE__), yellow(Message))
 
 	case NOTICE:
 
-		fmt.Printf("%s  :%s:%s:%s:\t%s\n", cyan("Notice"), cyan(self), green(__FILE__), green(__LINE__), Message)
+		fmt.Printf("%s  :%s:%s:%s:\t%s\n", cyan("Notice"), cyan(self), green(__FILE__), green(__LINE__), cyan(Message))
 
 	case ERROR:
 
-		fmt.Printf("%s   :%s:%s:%s:\t%s\n", red("Error"), cyan(self), green(__FILE__), green(__LINE__), Message)
+		fmt.Printf("%s   :%s:%s:%s:\t%s\n", red("Error"), cyan(self), green(__FILE__), green(__LINE__), red(Message))
 
 	case DEBUG:
 
-		fmt.Printf("%s   :%s:%s:%s:\t%s\n", blue("Debug"), cyan(self), green(__FILE__), green(__LINE__), Message)
+		fmt.Printf("%s   :%s:%s:%s:\t%s\n", blue("Debug"), cyan(self), green(__FILE__), green(__LINE__), blue(Message))
+
+        case BANNER:
+
+                fmt.Printf("%s    :%s:%s:%s:\t%s\n", white("Info"), cyan(self), green(__FILE__), green(__LINE__), magenta(Message))
 
 	default:
 

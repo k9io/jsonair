@@ -32,6 +32,7 @@ const (
 	NOTICE = 3
 	DEBUG  = 4
 	ERROR  = 5
+	BANNER = 6
 )
 
 var HOST string
@@ -66,6 +67,7 @@ func Logger(log_type int, format string, args ...interface{}) {
 	blue := color.New(color.FgBlue).SprintFunc()
 	cyan := color.New(color.FgCyan).SprintFunc()
 	white := color.New(color.FgWhite).SprintFunc()
+	magenta := color.New(color.FgMagenta).SprintFunc()
 
 	if HOST == "local" || HOST == "" {
 
@@ -84,33 +86,39 @@ func Logger(log_type int, format string, args ...interface{}) {
 
 	case INFO:
 
-		fmt.Printf("%s    :%s:%s:%s:\t%s\n", white("Info"), cyan(self), green(__FILE__), green(__LINE__), Message)
+		fmt.Printf("%s    :%s:%s:%s:\t%s\n", white("Info"), cyan(self), green(__FILE__), green(__LINE__), white(Message))
 
 		logWriter.Info(Message)
 
 	case WARN:
 
-		fmt.Printf("%s :%s:%s:%s:\t%s\n", yellow("Warning"), cyan(self), green(__FILE__), green(__LINE__), Message)
+		fmt.Printf("%s :%s:%s:%s:\t%s\n", yellow("Warning"), cyan(self), green(__FILE__), green(__LINE__), yellow(Message))
 
 		logWriter.Warning(Message)
 
 	case NOTICE:
 
-		fmt.Printf("%s  :%s:%s:%s:\t%s\n", cyan("Notice"), cyan(self), green(__FILE__), green(__LINE__), Message)
+		fmt.Printf("%s  :%s:%s:%s:\t%s\n", cyan("Notice"), cyan(self), green(__FILE__), green(__LINE__), cyan(Message))
 
 		logWriter.Warning(Message)
 
 	case ERROR:
 
-		fmt.Printf("%s   :%s:%s:%s:\t%s\n", red("Error"), cyan(self), green(__FILE__), green(__LINE__), Message)
+		fmt.Printf("%s   :%s:%s:%s:\t%s\n", red("Error"), cyan(self), green(__FILE__), green(__LINE__), red(Message))
 
 		logWriter.Err(Message)
 
 	case DEBUG:
 
-		fmt.Printf("%s   :%s:%s:%s:\t%s\n", blue("Debug"), cyan(self), green(__FILE__), green(__LINE__), Message)
+		fmt.Printf("%s   :%s:%s:%s:\t%s\n", blue("Debug"), cyan(self), green(__FILE__), green(__LINE__), blue(Message))
 
 		logWriter.Debug(Message)
+
+	case BANNER:
+
+		fmt.Printf("%s    :%s:%s:%s:\t%s\n", white("Info"), cyan(self), green(__FILE__), green(__LINE__), magenta(Message))
+
+		logWriter.Info(Message)
 
 	default:
 
