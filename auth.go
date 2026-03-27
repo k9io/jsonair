@@ -62,7 +62,7 @@ func Authenticate() gin.HandlerFunc {
 
 		c.Set("uuid", uuid)
 
-		Logger(NOTICE, "%s successfully authenticated.", uuid)
+		Logger(NOTICE, "%s successfully authenticated. [%s]", uuid, c.ClientIP())
 
 	}
 
