@@ -1,7 +1,7 @@
 # Table of contents
 
-* [Introduction](README.md)
-* [Getting Started](setup.md)
-* [API Reference](api/overview.md)
-  * [Authentication](api/auth.md)
+
+1. [What is JSONAir](README.md)
+   1. [Licensing](licensing.md)
+
 
