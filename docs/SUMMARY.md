@@ -1,4 +1,7 @@
 # Table of contents
 
-* [JSONAir.](README.md)
-* [Introduction](intro.md)
+* [Introduction](README.md)
+* [Getting Started](setup.md)
+* [API Reference](api/overview.md)
+  * [Authentication](api/auth.md)
+
