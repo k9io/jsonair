@@ -2,5 +2,5 @@
 description: JSONAir Cloud based Configuratons System.
 ---
 
-# JSONAir. Main "readme"
+# JSONAir.
 
