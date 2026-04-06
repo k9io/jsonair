@@ -20,6 +20,8 @@ import (
 
 func Authenticate() gin.HandlerFunc {
 
+	var err error
+
 	return func(c *gin.Context) {
 
 		full_header := c.GetHeader(Env.AUTH_HEADER)
@@ -57,6 +59,14 @@ func Authenticate() gin.HandlerFunc {
 			c.JSON(http.StatusOK, gin.H{"error": "authentication failed"})
 			c.Abort()
 			return
+
+		}
+
+		err = SQL_Update_Last_Login(uuid, key)
+
+		if err != nil {
+
+			Logger(ERROR, "Error updating 'last_login': %v", err)
 
 		}
 

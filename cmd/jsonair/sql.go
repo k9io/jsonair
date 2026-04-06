@@ -126,3 +126,11 @@ func SQL_GetSimple(uuid string, name string, jtype string, ja_type string) (stri
 	return reload, nil
 
 }
+
+func SQL_Update_Last_Login(uuid string, key string) error {
+
+	_, err := Env.DB.Exec("UPDATE `keys` SET `last_login`=now() WHERE `uuid`=? AND `key`=?", uuid, key)
+
+	return err
+
+}
