@@ -12,20 +12,47 @@
 package main
 
 import (
+	"crypto/tls"
 	"fmt"
 	"os"
 
 	"database/sql"
-	_ "github.com/go-sql-driver/mysql"
+	"github.com/go-sql-driver/mysql"
 )
 
 func SQL_Connect() {
 
 	var err error
 
-	connection_string := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s", Env.MYSQL_USER, Env.MYSQL_PASS, Env.MYSQL_HOST, Env.MYSQL_PORT, Env.MYSQL_DB)
+	cfg1 := mysql.Config{
+		User:                 Env.MYSQL_USER,
+		Passwd:               Env.MYSQL_PASS,
+		Net:                  "tcp",
+		Addr:                 Env.MYSQL_HOST,
+		DBName:               Env.MYSQL_DB,
+		AllowNativePasswords: true,
+	}
 
-	Env.DB, err = sql.Open("mysql", connection_string)
+	/* Enable TLS */
+
+	if Env.MYSQL_TLS == true {
+
+		cfg1.TLSConfig = "skip-verify" /* Make this a config? */
+		cfg1.TLS = &tls.Config{
+			MinVersion: tls.VersionTLS12,
+			MaxVersion: tls.VersionTLS12,
+		}
+
+	} else {
+
+		/* Disable TLS */
+
+		cfg1.TLSConfig = ""
+		cfg1.TLS = nil
+
+	}
+
+	Env.DB, err = sql.Open("mysql", cfg1.FormatDSN())
 
 	if err != nil {
 		Logger(ERROR, "Cannot connect to database. %s\n", err.Error())

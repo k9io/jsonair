@@ -11,7 +11,7 @@ export MYSQL_TABLE="configurations"
 export MYSQL_TLS=false
 
 export HTTP_TLS=false
-export HTTP_LISTEN=":8181"
+export HTTP_LISTEN=":9191"
 export HTTP_CERT="/etc/letsencrypt/live/YOURSITE/fullchain.pem"
 export HTTP_KEY="/etc/letsencrypt/live/YOURSITE/privkey.pem"
 export HTTP_MODE="release"

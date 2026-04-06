@@ -103,6 +103,14 @@ func LoadEnv() {
 		os.Exit(1)
 	}
 
+	tmp = os.Getenv("MYSQL_TLS")
+
+	if tmp == "true" {
+		Env.MYSQL_TLS = true
+	} else {
+		Env.MYSQL_TLS = false
+	}
+
 	/* -- HTTP -- */
 
 	Env.HTTP_LISTEN = os.Getenv("HTTP_LISTEN")
