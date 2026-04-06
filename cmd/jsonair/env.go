@@ -16,6 +16,8 @@ import (
 	"os"
 	"strconv"
 
+	l "github.com/k9io/jsonair/internal/logger"
+
 	"github.com/joho/godotenv"
 
 	_ "github.com/go-sql-driver/mysql"
@@ -61,35 +63,35 @@ func LoadEnv() {
 	Env.MYSQL_USER = os.Getenv("MYSQL_USERNAME")
 
 	if Env.MYSQL_USER == "" {
-		Logger(ERROR, "MYSQL_USERNAME environment variable is not set.")
+		l.Logger(l.ERROR, "MYSQL_USERNAME environment variable is not set.")
 		os.Exit(1)
 	}
 
 	Env.MYSQL_PASS = os.Getenv("MYSQL_PASSWORD")
 
 	if Env.MYSQL_PASS == "" {
-		Logger(ERROR, "MYSQL_PASSWORD environment variable is not set.")
+		l.Logger(l.ERROR, "MYSQL_PASSWORD environment variable is not set.")
 		os.Exit(1)
 	}
 
 	Env.MYSQL_DB = os.Getenv("MYSQL_DATABASE")
 
 	if Env.MYSQL_DB == "" {
-		Logger(ERROR, "MYSQL_DATABASE environment variable is not set.")
+		l.Logger(l.ERROR, "MYSQL_DATABASE environment variable is not set.")
 		os.Exit(1)
 	}
 
 	Env.MYSQL_TABLE = os.Getenv("MYSQL_TABLE")
 
 	if Env.MYSQL_TABLE == "" {
-		Logger(ERROR, "MYSQL_TABLE environment variable is not set.")
+		l.Logger(l.ERROR, "MYSQL_TABLE environment variable is not set.")
 		os.Exit(1)
 	}
 
 	Env.MYSQL_HOST = os.Getenv("MYSQL_HOST")
 
 	if Env.MYSQL_HOST == "" {
-		Logger(ERROR, "MYSQL_HOST environment variable is not set.")
+		l.Logger(l.ERROR, "MYSQL_HOST environment variable is not set.")
 		os.Exit(1)
 	}
 
@@ -99,7 +101,7 @@ func LoadEnv() {
 
 	if err != nil {
 
-		Logger(ERROR, "MYSQL_PORT environment variable is not an integer.")
+		l.Logger(l.ERROR, "MYSQL_PORT environment variable is not an integer.")
 		os.Exit(1)
 	}
 
@@ -116,33 +118,33 @@ func LoadEnv() {
 	Env.HTTP_LISTEN = os.Getenv("HTTP_LISTEN")
 
 	if Env.HTTP_LISTEN == "" {
-		Logger(ERROR, "HTTP_LISTEN environment variable is not set.")
+		l.Logger(l.ERROR, "HTTP_LISTEN environment variable is not set.")
 		os.Exit(1)
 	}
 
 	Env.HTTP_CERT = os.Getenv("HTTP_CERT")
 
 	if Env.HTTP_CERT == "" {
-		Logger(ERROR, "HTTP_CERT environment variable is not set.")
+		l.Logger(l.ERROR, "HTTP_CERT environment variable is not set.")
 		os.Exit(1)
 	}
 
 	Env.HTTP_KEY = os.Getenv("HTTP_KEY")
 
 	if Env.HTTP_KEY == "" {
-		Logger(ERROR, "HTTP_KEY environment variable is not set.")
+		l.Logger(l.ERROR, "HTTP_KEY environment variable is not set.")
 		os.Exit(1)
 	}
 
 	Env.HTTP_MODE = os.Getenv("HTTP_MODE")
 
 	if Env.HTTP_MODE == "" {
-		Logger(ERROR, "HTTP_MODE environment variable is not set.")
+		l.Logger(l.ERROR, "HTTP_MODE environment variable is not set.")
 		os.Exit(1)
 	}
 
 	if Env.HTTP_MODE != "release" && Env.HTTP_MODE != "debug" && Env.HTTP_MODE != "test" && Env.HTTP_MODE != "production" {
-		Logger(ERROR, "Invalid 'HTTP_MODE':  %s.  Valid 'http_modes' are 'release', 'debug', 'test' and 'production'.", Env.HTTP_MODE)
+		l.Logger(l.ERROR, "Invalid 'HTTP_MODE':  %s.  Valid 'http_modes' are 'release', 'debug', 'test' and 'production'.", Env.HTTP_MODE)
 	}
 
 	tmp = os.Getenv("HTTP_TLS")
@@ -158,14 +160,14 @@ func LoadEnv() {
 	Env.AUTH_HEADER = os.Getenv("AUTH_HEADER")
 
 	if Env.AUTH_HEADER == "" {
-		Logger(ERROR, "AUTH_HEADER environment variable is not set.")
+		l.Logger(l.ERROR, "AUTH_HEADER environment variable is not set.")
 		os.Exit(1)
 	}
 
 	Env.RUNAS = os.Getenv("RUNAS")
 
 	if Env.RUNAS == "" {
-		Logger(ERROR, "RUNAS environment variable is not set.")
+		l.Logger(l.ERROR, "RUNAS environment variable is not set.")
 		os.Exit(1)
 	}
 

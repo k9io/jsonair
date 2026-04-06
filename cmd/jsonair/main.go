@@ -18,22 +18,24 @@ import (
 	"net/http"
 	"os"
 
+	l "github.com/k9io/jsonair/internal/logger"
+
 	"github.com/gin-gonic/gin"
 )
 
 func main() {
 
-	Logger(BANNER, "-*> JSONAir! <*-")
-	Logger(BANNER, "Version: %s", Version)
-	Logger(BANNER, "Champ Clark III & The Key9, Inc. Team [https://k9.io]")
-	Logger(BANNER, "Copyright (C) 2026 Key9, Inc. et al.")
+	l.Logger(l.BANNER, "-*> JSONAir! <*-")
+	l.Logger(l.BANNER, "Version: %s", Version)
+	l.Logger(l.BANNER, "Champ Clark III & The Key9, Inc. Team [https://k9.io]")
+	l.Logger(l.BANNER, "Copyright (C) 2026 Key9, Inc. et al.")
 
 	LoadEnv() /* Load environment variables */
 
 	/* Enable remote logging, if needed */
 
 	if Env.SYSLOG_HOST != "" {
-		Init_Logger(Env.SYSLOG_HOST, Env.SYSLOG_PROTO)
+		l.Init_Logger(Env.SYSLOG_HOST, Env.SYSLOG_PROTO)
 	}
 
 	SQL_Connect()
@@ -63,13 +65,13 @@ func main() {
 
 	if Env.HTTP_TLS == true {
 
-		Logger(INFO, "JSONAir is up and listening for TLS traffic on %s.", Env.HTTP_LISTEN)
+		l.Logger(l.INFO, "JSONAir is up and listening for TLS traffic on %s.", Env.HTTP_LISTEN)
 
 		cert, err := tls.LoadX509KeyPair(Env.HTTP_CERT, Env.HTTP_KEY)
 
 		if err != nil {
 
-			Logger(ERROR, "Failed to load certificates: %v", err)
+			l.Logger(l.ERROR, "Failed to load certificates: %v", err)
 			os.Exit(1)
 
 		}
@@ -83,7 +85,7 @@ func main() {
 
 		if err != nil {
 
-			Logger(ERROR, "Failed to bind to port '%s': %v", Env.HTTP_LISTEN, err)
+			l.Logger(l.ERROR, "Failed to bind to port '%s': %v", Env.HTTP_LISTEN, err)
 			os.Exit(1)
 
 		}
@@ -92,7 +94,7 @@ func main() {
 
 		DropPrivileges(Env.RUNAS)
 
-		Logger(INFO, "Listening on '%s' for TLS traffic as UID: %d.", Env.HTTP_LISTEN, os.Getuid())
+		l.Logger(l.INFO, "Listening on '%s' for TLS traffic as UID: %d.", Env.HTTP_LISTEN, os.Getuid())
 
 		server := &http.Server{Handler: router}
 
@@ -100,7 +102,7 @@ func main() {
 
 		if err != nil {
 
-			Logger(ERROR, "Server failed: %v", err)
+			l.Logger(l.ERROR, "Server failed: %v", err)
 			os.Exit(1)
 
 		}
@@ -111,20 +113,20 @@ func main() {
 
 		if err != nil {
 
-			Logger(ERROR, "Failed to bind to port '%s': %v", Env.HTTP_LISTEN, err)
+			l.Logger(l.ERROR, "Failed to bind to port '%s': %v", Env.HTTP_LISTEN, err)
 			os.Exit(1)
 
 		}
 
 		DropPrivileges(Env.RUNAS)
 
-		Logger(INFO, "Listening on '%s' for traffic as UID: %d.", Env.HTTP_LISTEN, os.Getuid())
+		l.Logger(l.INFO, "Listening on '%s' for traffic as UID: %d.", Env.HTTP_LISTEN, os.Getuid())
 
 		err = http.Serve(ln, router)
 
 		if err != nil {
 
-			Logger(ERROR, "Server failed: %v", err)
+			l.Logger(l.ERROR, "Server failed: %v", err)
 			os.Exit(1)
 
 		}

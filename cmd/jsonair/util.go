@@ -19,6 +19,8 @@ import (
 	"strconv"
 	"syscall"
 
+	l "github.com/k9io/jsonair/internal/logger"
+
 	"github.com/gin-gonic/gin"
 	"github.com/tidwall/gjson"
 )
@@ -58,18 +60,18 @@ func DropPrivileges(username string) {
 
 	if current_uid != 0 {
 
-		Logger(NOTICE, "Not running as root. Not dropping privileges.")
+		l.Logger(l.NOTICE, "Not running as root. Not dropping privileges.")
 		return
 
 	}
 
-	Logger(NOTICE, "Dropping privileges to '%s'.", username)
+	l.Logger(l.NOTICE, "Dropping privileges to '%s'.", username)
 
 	u, err := user.Lookup(username)
 
 	if err != nil {
 
-		Logger(ERROR, "User lookup failed: %v", err)
+		l.Logger(l.ERROR, "User lookup failed: %v", err)
 		os.Exit(1)
 
 	}
@@ -81,7 +83,7 @@ func DropPrivileges(username string) {
 
 	if err != nil {
 
-		Logger(NOTICE, "'setgid' failed: %v", err)
+		l.Logger(l.NOTICE, "'setgid' failed: %v", err)
 		os.Exit(1)
 
 	}
@@ -90,7 +92,7 @@ func DropPrivileges(username string) {
 
 	if err != nil {
 
-		Logger(NOTICE, "'setuid' failed: %v", err)
+		l.Logger(l.NOTICE, "'setuid' failed: %v", err)
 		os.Exit(1)
 	}
 }

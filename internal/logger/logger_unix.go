@@ -1,4 +1,4 @@
-//go:build windows
+//go:build !windows
 
 /**
  ** Copyright (C) 2026 Key9, Inc <k9.io>
@@ -13,16 +13,16 @@
 
 /** Ported from Corium; re-licensed by the author under MIT. **/
 
-package main
+package logger
 
 import (
 	"fmt"
 	"log"
+	"log/syslog"
 	"os"
 	"path/filepath"
 	"runtime"
 
-	//"golang.org/x/sys/windows/svc/eventlog"
 	"github.com/fatih/color"
 )
 
@@ -32,17 +32,25 @@ const (
 	NOTICE = 3
 	DEBUG  = 4
 	ERROR  = 5
+	BANNER = 6
 )
+
+var HOST string
+var PROTO string
 
 func Init_Logger(host string, proto string) {
 
-	/* Nothing to init under Windows (yet) */
-
+	HOST = host
+	PROTO = proto
 }
 
 func Logger(log_type int, format string, args ...interface{}) {
 
+	var err error
+
 	var __FILE__ string /* Use old school __LINE__ and __FILE__ variables */
+
+	var logWriter *syslog.Writer
 
 	Message := fmt.Sprintf(format, args...)
 
@@ -61,31 +69,56 @@ func Logger(log_type int, format string, args ...interface{}) {
 	white := color.New(color.FgWhite).SprintFunc()
 	magenta := color.New(color.FgMagenta).SprintFunc()
 
+	if HOST == "local" || HOST == "" {
+
+		logWriter, err = syslog.New(syslog.LOG_INFO, self)
+
+	} else {
+
+		logWriter, err = syslog.Dial(PROTO, HOST, syslog.LOG_INFO, self)
+	}
+
+	if err != nil {
+		log.Fatalf("[E] Unable to open syslog channel: %s\n", err.Error())
+	}
+
 	switch log_type {
 
 	case INFO:
 
 		fmt.Printf("%s    :%s:%s:%s:\t%s\n", white("Info"), cyan(self), green(__FILE__), green(__LINE__), white(Message))
 
+		logWriter.Info(Message)
+
 	case WARN:
 
 		fmt.Printf("%s :%s:%s:%s:\t%s\n", yellow("Warning"), cyan(self), green(__FILE__), green(__LINE__), yellow(Message))
+
+		logWriter.Warning(Message)
 
 	case NOTICE:
 
 		fmt.Printf("%s  :%s:%s:%s:\t%s\n", cyan("Notice"), cyan(self), green(__FILE__), green(__LINE__), cyan(Message))
 
+		logWriter.Warning(Message)
+
 	case ERROR:
 
 		fmt.Printf("%s   :%s:%s:%s:\t%s\n", red("Error"), cyan(self), green(__FILE__), green(__LINE__), red(Message))
+
+		logWriter.Err(Message)
 
 	case DEBUG:
 
 		fmt.Printf("%s   :%s:%s:%s:\t%s\n", blue("Debug"), cyan(self), green(__FILE__), green(__LINE__), blue(Message))
 
+		logWriter.Debug(Message)
+
 	case BANNER:
 
 		fmt.Printf("%s    :%s:%s:%s:\t%s\n", white("Info"), cyan(self), green(__FILE__), green(__LINE__), magenta(Message))
+
+		logWriter.Info(Message)
 
 	default:
 

@@ -12,8 +12,11 @@
 package main
 
 import (
-	"github.com/gin-gonic/gin"
 	"time"
+
+	l "github.com/k9io/jsonair/internal/logger"
+
+	"github.com/gin-gonic/gin"
 )
 
 func HTTP_Logger() gin.HandlerFunc {
@@ -24,7 +27,7 @@ func HTTP_Logger() gin.HandlerFunc {
 
 		now := time.Now()
 
-		Logger(INFO, "[%s] %s %s %s", now.Format(time.RFC3339), c.Request.Method, c.Request.URL.Path, clientIP)
+		l.Logger(l.INFO, "[%s] %s %s %s", now.Format(time.RFC3339), c.Request.Method, c.Request.URL.Path, clientIP)
 		c.Next()
 
 	}

@@ -15,6 +15,8 @@ import (
 	"net/http"
 	"strings"
 
+	l "github.com/k9io/jsonair/internal/logger"
+
 	"github.com/gin-gonic/gin"
 )
 
@@ -29,7 +31,7 @@ func Authenticate() gin.HandlerFunc {
 		/* No key given,  return with error */
 
 		if full_header == "" {
-			Logger(WARN, "Authentication failed for [NO KEY] [%s]", c.ClientIP())
+			l.Logger(l.WARN, "Authentication failed for [NO KEY] [%s]", c.ClientIP())
 			c.JSON(http.StatusOK, gin.H{"error": "authentication failed"})
 			c.Abort()
 			return
@@ -40,7 +42,7 @@ func Authenticate() gin.HandlerFunc {
 		/* Validate the string properly split */
 
 		if len(temp_value) != 2 {
-			Logger(WARN, "Authentication failed for [INVALID KEY] [%s]", c.ClientIP())
+			l.Logger(l.WARN, "Authentication failed for [INVALID KEY] [%s]", c.ClientIP())
 			c.JSON(http.StatusOK, gin.H{"error": "api authentication failed"})
 			c.Abort()
 			return
@@ -55,7 +57,7 @@ func Authenticate() gin.HandlerFunc {
 
 		if auth_check == false {
 
-			Logger(WARN, "Authentication failed for %s [%s]", uuid, c.ClientIP())
+			l.Logger(l.WARN, "Authentication failed for %s [%s]", uuid, c.ClientIP())
 			c.JSON(http.StatusOK, gin.H{"error": "authentication failed"})
 			c.Abort()
 			return
@@ -66,13 +68,13 @@ func Authenticate() gin.HandlerFunc {
 
 		if err != nil {
 
-			Logger(ERROR, "Error updating 'last_login': %v", err)
+			l.Logger(l.ERROR, "Error updating 'last_login': %v", err)
 
 		}
 
 		c.Set("uuid", uuid)
 
-		Logger(NOTICE, "%s successfully authenticated. [%s]", uuid, c.ClientIP())
+		l.Logger(l.NOTICE, "%s successfully authenticated. [%s]", uuid, c.ClientIP())
 
 	}
 

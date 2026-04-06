@@ -1,4 +1,4 @@
-module jsonair
+module github.com/k9io/jsonair
 
 go 1.25.0
 

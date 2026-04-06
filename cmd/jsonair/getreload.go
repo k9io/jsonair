@@ -14,6 +14,8 @@ package main
 import (
 	"net/http"
 
+	l "github.com/k9io/jsonair/internal/logger"
+
 	"github.com/gin-gonic/gin"
 	"github.com/tidwall/sjson"
 )
@@ -36,20 +38,20 @@ func GetReload(c *gin.Context) {
 
 	if err != nil {
 
-		Logger(WARN, "%v [%s]", err, c.ClientIP())
+		l.Logger(l.WARN, "%v [%s]", err, c.ClientIP())
 		c.String(http.StatusNotFound, `{"status":"not found","code":404}`)
 		c.Abort()
 		return
 
 	}
 
-	Logger(INFO, "%s requested reload for %s", c.ClientIP(), name)
+	l.Logger(l.INFO, "%s requested reload for %s", c.ClientIP(), name)
 
 	reload, err = SQL_GetSimple(uuid, name, jtype, "reload")
 
 	if err != nil {
 
-		Logger(WARN, "%v", err)
+		l.Logger(l.WARN, "%v", err)
 		c.String(http.StatusNotFound, `{"status":"not found","code":404}`)
 		c.Abort()
 

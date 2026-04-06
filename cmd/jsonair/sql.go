@@ -16,6 +16,8 @@ import (
 	"fmt"
 	"os"
 
+	l "github.com/k9io/jsonair/internal/logger"
+
 	"database/sql"
 	"github.com/go-sql-driver/mysql"
 )
@@ -55,7 +57,7 @@ func SQL_Connect() {
 	Env.DB, err = sql.Open("mysql", cfg1.FormatDSN())
 
 	if err != nil {
-		Logger(ERROR, "Cannot connect to database. %s\n", err.Error())
+		l.Logger(l.ERROR, "Cannot connect to database. %s\n", err.Error())
 		os.Exit(1)
 	}
 
@@ -69,7 +71,7 @@ func SQL_Auth(client_uuid string, api_key string) bool {
 
 	if err != nil && err != sql.ErrNoRows {
 
-		Logger(ERROR, "Cannot query SQL: %v", err.Error())
+		l.Logger(l.ERROR, "Cannot query SQL: %v", err.Error())
 		return false
 	}
 
