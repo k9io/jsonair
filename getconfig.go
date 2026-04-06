@@ -12,9 +12,13 @@
 package main
 
 import (
+	"encoding/base64"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+
+	"github.com/tidwall/gjson"
+	"github.com/tidwall/sjson"
 )
 
 func GetConfig(c *gin.Context) {
@@ -42,6 +46,8 @@ func GetConfig(c *gin.Context) {
 
 	}
 
+	ecode := gjson.Get(jsondata_s, "encode").Bool()
+
 	Logger(INFO, "%s requested configuration for %s", c.ClientIP(), name)
 
 	config_json, err = SQL_GetConfig(uuid, name, jtype)
@@ -55,6 +61,18 @@ func GetConfig(c *gin.Context) {
 
 	}
 
-	c.String(http.StatusOK, config_json)
+	if ecode == false {
+
+		c.String(http.StatusOK, config_json)
+
+	} else {
+
+		b64 := base64.StdEncoding.EncodeToString([]byte(config_json))
+
+		config_b64, _ := sjson.Set("", "config", b64)
+
+		c.String(http.StatusOK, config_b64)
+
+	}
 
 }
