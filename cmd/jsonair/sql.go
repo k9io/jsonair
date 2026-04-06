@@ -83,9 +83,9 @@ func SQL_Auth(client_uuid string, api_key string) bool {
 
 func SQL_GetConfig(uuid string, name string, jtype string) (string, error) {
 
-	var config_json string
+	var config_data string
 
-	err := Env.DB.QueryRow("SELECT `json` FROM `configurations` WHERE `uuid`=? AND `name`=? AND `type`=? LIMIT 1", uuid, name, jtype).Scan(&config_json)
+	err := Env.DB.QueryRow("SELECT `config_data` FROM `configurations` WHERE `uuid`=? AND `name`=? AND `type`=? LIMIT 1", uuid, name, jtype).Scan(&config_data)
 
 	if err != nil && err != sql.ErrNoRows {
 
@@ -99,7 +99,7 @@ func SQL_GetConfig(uuid string, name string, jtype string) (string, error) {
 
 	}
 
-	return config_json, nil
+	return config_data, nil
 
 }
 
