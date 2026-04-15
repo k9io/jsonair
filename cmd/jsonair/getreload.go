@@ -27,7 +27,10 @@ func GetReload(c *gin.Context) {
 	var jtype string
 	var reload string
 
-	uuid := c.MustGet("uuid").(string) /* gin will panic if this isn't there (as it should) */
+	//	uuid := c.MustGet("uuid").(string) /* gin will panic if this isn't there (as it should) */
+
+	uuid := c.GetString("uuid")
+	client_name, _ := c.Get("client_name")
 
 	jsondata, _ := c.GetRawData()
 	jsondata_s := string(jsondata)
@@ -45,7 +48,7 @@ func GetReload(c *gin.Context) {
 
 	}
 
-	l.Logger(l.INFO, "%s requested reload for %s", c.ClientIP(), name)
+	l.Logger(l.INFO, "%s requested 'config' for '%s/%s' for '%s' [%s]", c.ClientIP(), jtype, name, client_name, uuid)
 
 	reload, err = SQL_GetSimple(uuid, name, jtype, "reload")
 

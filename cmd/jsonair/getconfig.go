@@ -14,6 +14,7 @@ package main
 import (
 	"encoding/base64"
 	"net/http"
+	//	"fmt"
 
 	l "github.com/k9io/jsonair/internal/logger"
 
@@ -30,35 +31,32 @@ func GetConfig(c *gin.Context) {
 	var jtype string
 	var config_json string
 
-	uuid := c.MustGet("uuid").(string) /* gin will panic if this isn't there (as it should) */
+	uuid := c.GetString("uuid")
+	client_name, _ := c.Get("client_name")
 
 	jsondata, _ := c.GetRawData()
 	jsondata_s := string(jsondata)
-
-	c.Header("Content-Type", "application/json; charset=utf-8")
 
 	name, jtype, err = GetConfigName(c, jsondata_s)
 
 	if err != nil {
 
 		l.Logger(l.WARN, "%v [%s]", err, c.ClientIP())
-		c.String(http.StatusNotFound, `{"status":"not found","code":404}`)
-		c.Abort()
+		c.AbortWithStatusJSON(http.StatusNotFound, gin.H{"error": "not found"})
 		return
 
 	}
 
 	ecode := gjson.Get(jsondata_s, "encode").Bool()
 
-	l.Logger(l.INFO, "%s requested configuration for %s", c.ClientIP(), name)
+	l.Logger(l.INFO, "%s requested 'config' for '%s/%s' for '%s' [%s]", c.ClientIP(), jtype, name, client_name, uuid)
 
 	config_json, err = SQL_GetConfig(uuid, name, jtype)
 
 	if err != nil {
 
 		l.Logger(l.WARN, "%v", err)
-		c.String(http.StatusNotFound, `{"status":"not found","code":404}`)
-		c.Abort()
+		c.AbortWithStatusJSON(http.StatusNotFound, gin.H{"error": "not found"})
 		return
 
 	}

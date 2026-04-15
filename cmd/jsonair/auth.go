@@ -14,68 +14,92 @@ package main
 import (
 	"net/http"
 	"strings"
+	"time"
 
-	l "github.com/k9io/jsonair/internal/logger"
+	//	l "github.com/k9io/jsonair/internal/logger"
 
 	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt/v5"
 )
 
-func Authenticate() gin.HandlerFunc {
+type Claims struct {
+	UUID        string `json:"uuid"`
+	Client_Name string `json:"client_name"`
+	jwt.RegisteredClaims
+}
 
-	var err error
+func JWTMiddleware() gin.HandlerFunc {
 
 	return func(c *gin.Context) {
 
-		full_header := c.GetHeader(Env.AUTH_HEADER)
-
-		/* No key given,  return with error */
-
-		if full_header == "" {
-			l.Logger(l.WARN, "Authentication failed for [NO KEY] [%s]", c.ClientIP())
-			c.JSON(http.StatusOK, gin.H{"error": "authentication failed"})
-			c.Abort()
+		authHeader := c.GetHeader("Authorization")
+		if !strings.HasPrefix(authHeader, "Bearer ") {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Bearer token required"})
 			return
 		}
 
-		temp_value := strings.Split(full_header, ":")
+		tokenStr := strings.TrimPrefix(authHeader, "Bearer ")
 
-		/* Validate the string properly split */
+		claims := &Claims{}
 
-		if len(temp_value) != 2 {
-			l.Logger(l.WARN, "Authentication failed for [INVALID KEY] [%s]", c.ClientIP())
-			c.JSON(http.StatusOK, gin.H{"error": "api authentication failed"})
-			c.Abort()
+		token, err := jwt.ParseWithClaims(tokenStr, claims, func(t *jwt.Token) (interface{}, error) {
+			return Env.JWT_TOKEN_SECRET, nil
+		})
+
+		if err != nil || !token.Valid {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Session expired or invalid"})
 			return
 		}
 
-		/* Assign more sane values */
+		c.Set("uuid", claims.UUID)
+		c.Set("client_name", claims.Client_Name)
 
-		uuid := Remove_Unwanted(temp_value[0])
-		key := Remove_Unwanted(temp_value[1])
+		c.Next()
+	}
+}
 
-		auth_check := SQL_Auth(uuid, key)
+func DoToken(c *gin.Context) {
 
-		if auth_check == false {
+	var req struct {
+		Token string `json:"token" binding:"required"`
+	}
 
-			l.Logger(l.WARN, "Authentication failed for %s [%s]", uuid, c.ClientIP())
-			c.JSON(http.StatusOK, gin.H{"error": "authentication failed"})
-			c.Abort()
-			return
+	if err := c.ShouldBindJSON(&req); err != nil {
+		//		c.JSON(http.StatusBadRequest, gin.H{"error": "Missing data"})
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Missing data"})
+		return
+	}
 
-		}
+	auth_check, client_name, uuid := SQL_Auth(req.Token)
 
-		err = SQL_Update_Last_Login(uuid, key)
+	if auth_check == false {
 
-		if err != nil {
-
-			l.Logger(l.ERROR, "Error updating 'last_login': %v", err)
-
-		}
-
-		c.Set("uuid", uuid)
-
-		l.Logger(l.NOTICE, "%s successfully authenticated. [%s]", uuid, c.ClientIP())
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Session expired or invalid"})
+		return
 
 	}
+
+	// Create the short-lived JWT (15 minutes)
+
+	expirationTime := time.Now().Add(15 * time.Minute)
+	claims := &Claims{
+		UUID:        uuid,
+		Client_Name: client_name,
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(expirationTime),
+		},
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	tokenString, err := token.SignedString(Env.JWT_TOKEN_SECRET)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not generate session"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"access_token": tokenString,
+		"expires_in":   Env.JTW_TOKEN_EXPIRE, // In seconds
+	})
 
 }

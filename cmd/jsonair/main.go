@@ -57,11 +57,18 @@ func main() {
 		router.Use(HTTP_Logger())
 	}
 
-	router.Use(Authenticate())
+	router.POST("/api/v1/auth/token", DoToken) // RENAME
 
-	router.POST("/config", GetConfig)
-	router.POST("/debug", GetDebug)
-	router.POST("/reload", GetReload)
+	configGroup := router.Group("/api/v1/configs")
+
+	configGroup.Use(JWTMiddleware())
+	{
+
+		configGroup.GET("/system", GetConfig)
+		configGroup.GET("/reload", GetReload)
+		configGroup.GET("/debug", GetDebug)
+
+	}
 
 	if Env.HTTP_TLS == true {
 

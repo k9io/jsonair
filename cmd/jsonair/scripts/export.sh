@@ -16,7 +16,6 @@ export HTTP_CERT="/etc/letsencrypt/live/YOURSITE/fullchain.pem"
 export HTTP_KEY="/etc/letsencrypt/live/YOURSITE/privkey.pem"
 export HTTP_MODE="release"
 
-export AUTH_HEADER="API_KEY"
 
 ./jsonair
 

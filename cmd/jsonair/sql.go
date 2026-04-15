@@ -12,7 +12,9 @@
 package main
 
 import (
+	"crypto/sha256"
 	"crypto/tls"
+
 	"fmt"
 	"os"
 
@@ -63,24 +65,30 @@ func SQL_Connect() {
 
 }
 
-func SQL_Auth(client_uuid string, api_key string) bool {
+func SQL_Auth(pat string) (bool, string, string) {
 
 	var auth_check string
+	var name string
+	var uuid string
 
-	err := Env.DB.QueryRow("SELECT `id` FROM `keys` WHERE `uuid`=? AND `key`=? LIMIT 1", client_uuid, api_key).Scan(&auth_check)
+	/* SHA256 the users PAT */
+
+	hash_pat := fmt.Sprintf("%x", sha256.Sum256([]byte(pat)))
+
+	err := Env.DB.QueryRow("SELECT `id`,`name`,`uuid` FROM `keys` WHERE `key`=? LIMIT 1", hash_pat).Scan(&auth_check, &name, &uuid)
 
 	if err != nil && err != sql.ErrNoRows {
 
 		l.Logger(l.ERROR, "Cannot query SQL: %v", err.Error())
-		return false
+		return false, "", ""
 	}
 
 	if err == sql.ErrNoRows || auth_check == "" {
 
-		return false
+		return false, "", ""
 	}
 
-	return true
+	return true, name, uuid
 }
 
 func SQL_GetConfig(uuid string, name string, jtype string) (string, error) {

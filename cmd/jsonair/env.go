@@ -45,7 +45,8 @@ type Environment_Struct struct {
 	HTTP_KEY    string
 	HTTP_MODE   string
 
-	AUTH_HEADER string
+	JWT_TOKEN_SECRET []byte
+	JTW_TOKEN_EXPIRE int
 }
 
 var Env Environment_Struct
@@ -105,6 +106,13 @@ func LoadEnv() {
 		os.Exit(1)
 	}
 
+	if Env.MYSQL_PORT == 0 {
+
+		l.Logger(l.ERROR, "MYSQL_PORT must be greater than zero.")
+		os.Exit(1)
+
+	}
+
 	tmp = os.Getenv("MYSQL_TLS")
 
 	if tmp == "true" {
@@ -157,18 +165,37 @@ func LoadEnv() {
 
 	/* -- Core stuff -- */
 
-	Env.AUTH_HEADER = os.Getenv("AUTH_HEADER")
-
-	if Env.AUTH_HEADER == "" {
-		l.Logger(l.ERROR, "AUTH_HEADER environment variable is not set.")
-		os.Exit(1)
-	}
-
 	Env.RUNAS = os.Getenv("RUNAS")
 
 	if Env.RUNAS == "" {
 		l.Logger(l.ERROR, "RUNAS environment variable is not set.")
 		os.Exit(1)
 	}
+
+	tmp = os.Getenv("JTW_TOKEN_EXPIRE")
+
+	Env.JTW_TOKEN_EXPIRE, err = strconv.Atoi(tmp)
+
+	if err != nil {
+
+		l.Logger(l.ERROR, "JTW_TOKEN_EXPIRE environment variable is not an integer.")
+		os.Exit(1)
+	}
+
+	if Env.JTW_TOKEN_EXPIRE == 0 {
+
+		l.Logger(l.ERROR, "JTW_TOKEN_EXPIRE must be greater than zero.")
+		os.Exit(1)
+
+	}
+
+	tmp = os.Getenv("JWT_TOKEN_SECRET")
+
+	if tmp == "" {
+		l.Logger(l.ERROR, "JWT_TOKEN_SECRET environment variable is not set.")
+		os.Exit(1)
+	}
+
+	Env.JWT_TOKEN_SECRET = []byte(tmp)
 
 }
