@@ -58,7 +58,7 @@ func JWTMiddleware() gin.HandlerFunc {
 	}
 }
 
-func DoToken(c *gin.Context) {
+func AuthToken(c *gin.Context) {
 
 	var req struct {
 		Token string `json:"token" binding:"required"`

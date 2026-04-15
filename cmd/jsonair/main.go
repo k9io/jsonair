@@ -57,14 +57,14 @@ func main() {
 		router.Use(HTTP_Logger())
 	}
 
-	router.POST("/api/v1/auth/token", DoToken) // RENAME
+	router.POST("/api/v1/jsonair/auth/token", AuthToken)
 
-	configGroup := router.Group("/api/v1/configs")
+	configGroup := router.Group("/api/v1/jsonair")
 
 	configGroup.Use(JWTMiddleware())
 	{
 
-		configGroup.GET("/system", GetConfig)
+		configGroup.GET("/config", GetConfig)
 		configGroup.GET("/reload", GetReload)
 		configGroup.GET("/debug", GetDebug)
 
