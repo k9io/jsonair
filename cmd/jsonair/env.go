@@ -18,9 +18,8 @@ import (
 
 	l "github.com/k9io/jsonair/internal/logger"
 
-	"github.com/joho/godotenv"
-
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/joho/godotenv"
 )
 
 type Environment_Struct struct {

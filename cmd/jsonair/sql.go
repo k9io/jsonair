@@ -75,7 +75,7 @@ func SQL_Auth(pat string) (bool, string, string) {
 
 	hash_pat := fmt.Sprintf("%x", sha256.Sum256([]byte(pat)))
 
-	err := Env.DB.QueryRow("SELECT `id`,`name`,`uuid` FROM `keys` WHERE `key`=? LIMIT 1", hash_pat).Scan(&auth_check, &name, &uuid)
+	err := Env.DB.QueryRow("SELECT `id`,`name`,`uuid` FROM `keys` WHERE `token`=? LIMIT 1", hash_pat).Scan(&auth_check, &name, &uuid)
 
 	if err != nil && err != sql.ErrNoRows {
 

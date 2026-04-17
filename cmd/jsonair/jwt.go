@@ -16,7 +16,7 @@ import (
 	"strings"
 	"time"
 
-	//	l "github.com/k9io/jsonair/internal/logger"
+	l "github.com/k9io/jsonair/internal/logger"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
@@ -34,7 +34,11 @@ func JWTMiddleware() gin.HandlerFunc {
 
 		authHeader := c.GetHeader("Authorization")
 		if !strings.HasPrefix(authHeader, "Bearer ") {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Bearer token required"})
+
+			l.Logger(l.ERROR, "%s didn't send a Bearer token.", c.ClientIP())
+
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Session expired or invalid"})
+
 			return
 		}
 
@@ -47,9 +51,14 @@ func JWTMiddleware() gin.HandlerFunc {
 		})
 
 		if err != nil || !token.Valid {
+
+			l.Logger(l.NOTICE, "Invalid or expired token from %s", c.ClientIP())
+
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Session expired or invalid"})
 			return
 		}
+
+		l.Logger(l.NOTICE, "Authentication success for %s [%s] from %s.", c.ClientIP(), claims.UUID, claims.Client_Name)
 
 		c.Set("uuid", claims.UUID)
 		c.Set("client_name", claims.Client_Name)
@@ -64,8 +73,11 @@ func AuthToken(c *gin.Context) {
 		Token string `json:"token" binding:"required"`
 	}
 
-	if err := c.ShouldBindJSON(&req); err != nil {
-		//		c.JSON(http.StatusBadRequest, gin.H{"error": "Missing data"})
+	err := c.ShouldBindJSON(&req)
+
+	if err != nil {
+
+		l.Logger(l.ERROR, "%s sent a request missing data.", c.ClientIP())
 		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Missing data"})
 		return
 	}
@@ -74,14 +86,16 @@ func AuthToken(c *gin.Context) {
 
 	if auth_check == false {
 
+		l.Logger(l.NOTICE, "%s session expired.", c.ClientIP())
 		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Session expired or invalid"})
 		return
 
 	}
 
-	// Create the short-lived JWT (15 minutes)
+	/* Create the short-lived JWT */
 
-	expirationTime := time.Now().Add(15 * time.Minute)
+	expirationTime := time.Now().Add(time.Duration(Env.JTW_TOKEN_EXPIRE) * time.Minute)
+
 	claims := &Claims{
 		UUID:        uuid,
 		Client_Name: client_name,
@@ -92,7 +106,10 @@ func AuthToken(c *gin.Context) {
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	tokenString, err := token.SignedString(Env.JWT_TOKEN_SECRET)
+
 	if err != nil {
+
+		l.Logger(l.ERROR, "Could not generate a sessions for %s.", c.ClientIP())
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not generate session"})
 		return
 	}
@@ -101,5 +118,7 @@ func AuthToken(c *gin.Context) {
 		"access_token": tokenString,
 		"expires_in":   Env.JTW_TOKEN_EXPIRE, // In seconds
 	})
+
+	l.Logger(l.INFO, "Got new access token for %s [%s] from %s.", uuid, client_name, c.ClientIP())
 
 }
