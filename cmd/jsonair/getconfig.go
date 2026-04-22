@@ -21,20 +21,27 @@ import (
 	"github.com/tidwall/gjson"
 )
 
-func GetConfig(c *gin.Context) {
+func getConfig(c *gin.Context) {
 
 	var err error
 	var name string
 	var jtype string
-	var config_data string
+	var configData string
 
 	uuid := c.GetString("uuid")
-	client_name, _ := c.Get("client_name")
+	clientName, _ := c.Get("client_name")
 
-	jsondata, _ := c.GetRawData()
-	jsondata_s := string(jsondata)
+	jsondata, err := c.GetRawData()
 
-	name, jtype, err = GetConfigName(c, jsondata_s)
+	if err != nil {
+		l.Logger(l.WARN, "Failed to read request body from %s: %v", c.ClientIP(), err)
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "Failed to read request body"})
+		return
+	}
+
+	jsonStr := string(jsondata)
+
+	name, jtype, err = getConfigName(c, jsonStr)
 
 	if err != nil {
 
@@ -44,11 +51,11 @@ func GetConfig(c *gin.Context) {
 
 	}
 
-	decode := gjson.Get(jsondata_s, "decode").Bool()
+	decode := gjson.Get(jsonStr, "decode").Bool()
 
-	l.Logger(l.INFO, "%s requested 'config' for '%s/%s' for '%s' [%s]", c.ClientIP(), jtype, name, client_name, uuid)
+	l.Logger(l.INFO, "%s requested 'config' for '%s/%s' for '%s' [%s]", c.ClientIP(), jtype, name, clientName, uuid)
 
-	config_data, err = SQL_GetConfig(uuid, name, jtype)
+	configData, err = sqlGetConfig(c.Request.Context(), uuid, name, jtype)
 
 	if err != nil {
 
@@ -60,20 +67,21 @@ func GetConfig(c *gin.Context) {
 
 	/* Does the client want the configuration in Base64 or not */
 
-	if decode == false {
+	if !decode {
 
-		c.String(http.StatusOK, config_data)
+		c.String(http.StatusOK, configData)
 
 	} else {
 
-		decode_config_out, err := base64.StdEncoding.DecodeString(config_data)
+		decoded, err := base64.StdEncoding.DecodeString(configData)
 
 		if err != nil {
 			l.Logger(l.ERROR, "Error decoding base64: %v", err)
+			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "Failed to decode configuration"})
 			return
 		}
 
-		c.String(http.StatusOK, string(decode_config_out))
+		c.String(http.StatusOK, string(decoded))
 	}
 
 }

@@ -100,7 +100,7 @@ func Logger(log_type int, format string, args ...interface{}) {
 
 		fmt.Printf("%s  :%s:%s:%s:\t%s\n", cyan("Notice"), cyan(self), green(__FILE__), green(__LINE__), cyan(Message))
 
-		logWriter.Warning(Message)
+		logWriter.Notice(Message)
 
 	case ERROR:
 
@@ -122,7 +122,7 @@ func Logger(log_type int, format string, args ...interface{}) {
 
 	default:
 
-		log.Printf("%s %s", red("!! Unknown logging type: %s !!"), log_type)
+		log.Printf("%s %d", red("!! Unknown logging type !!"), log_type)
 
 	}
 

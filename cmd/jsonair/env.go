@@ -22,170 +22,173 @@ import (
 	"github.com/joho/godotenv"
 )
 
-type Environment_Struct struct {
+type environmentConfig struct {
 	DB *sql.DB
 
-	RUNAS string
+	RunAs string
 
-	MYSQL_USER  string
-	MYSQL_PASS  string
-	MYSQL_DB    string
-	MYSQL_TABLE string
-	MYSQL_HOST  string
-	MYSQL_PORT  int
-	MYSQL_TLS   bool
+	MySQLUser          string
+	MySQLPass          string
+	MySQLDB            string
+	MySQLTable         string
+	MySQLHost          string
+	MySQLPort          int
+	MySQLTLS           bool
+	MySQLTLSSkipVerify bool
 
-	SYSLOG_HOST  string
-	SYSLOG_PROTO string
+	SyslogHost  string
+	SyslogProto string
 
-	HTTP_TLS    bool
-	HTTP_LISTEN string
-	HTTP_CERT   string
-	HTTP_KEY    string
-	HTTP_MODE   string
+	HTTPTLS   bool
+	HTTPListen string
+	HTTPCert   string
+	HTTPKey    string
+	HTTPMode   string
 
-	JWT_TOKEN_SECRET []byte
-	JTW_TOKEN_EXPIRE int
+	JWTTokenSecret  []byte
+	JWTTokenExpire  int
+	TokenHMACSecret []byte
 }
 
-var Env Environment_Struct
+var Env environmentConfig
 
-func LoadEnv() {
+func loadEnv() {
 
 	var err error
 
-	godotenv.Load() // Loads .env into the system environment
+	if err := godotenv.Load(); err != nil {
+		l.Logger(l.NOTICE, "No .env file found, using system environment variables.")
+	}
 
 	/* Sanity Checks */
 
 	/* -- MySQL -- */
 
-	Env.MYSQL_USER = os.Getenv("MYSQL_USERNAME")
+	Env.MySQLUser = os.Getenv("MYSQL_USERNAME")
 
-	if Env.MYSQL_USER == "" {
+	if Env.MySQLUser == "" {
 		l.Logger(l.ERROR, "MYSQL_USERNAME environment variable is not set.")
 		os.Exit(1)
 	}
 
-	Env.MYSQL_PASS = os.Getenv("MYSQL_PASSWORD")
+	Env.MySQLPass = os.Getenv("MYSQL_PASSWORD")
 
-	if Env.MYSQL_PASS == "" {
+	if Env.MySQLPass == "" {
 		l.Logger(l.ERROR, "MYSQL_PASSWORD environment variable is not set.")
 		os.Exit(1)
 	}
 
-	Env.MYSQL_DB = os.Getenv("MYSQL_DATABASE")
+	Env.MySQLDB = os.Getenv("MYSQL_DATABASE")
 
-	if Env.MYSQL_DB == "" {
+	if Env.MySQLDB == "" {
 		l.Logger(l.ERROR, "MYSQL_DATABASE environment variable is not set.")
 		os.Exit(1)
 	}
 
-	Env.MYSQL_TABLE = os.Getenv("MYSQL_TABLE")
+	Env.MySQLTable = os.Getenv("MYSQL_TABLE")
 
-	if Env.MYSQL_TABLE == "" {
+	if Env.MySQLTable == "" {
 		l.Logger(l.ERROR, "MYSQL_TABLE environment variable is not set.")
 		os.Exit(1)
 	}
 
-	Env.MYSQL_HOST = os.Getenv("MYSQL_HOST")
+	Env.MySQLHost = os.Getenv("MYSQL_HOST")
 
-	if Env.MYSQL_HOST == "" {
+	if Env.MySQLHost == "" {
 		l.Logger(l.ERROR, "MYSQL_HOST environment variable is not set.")
 		os.Exit(1)
 	}
 
 	tmp := os.Getenv("MYSQL_PORT")
 
-	Env.MYSQL_PORT, err = strconv.Atoi(tmp)
+	Env.MySQLPort, err = strconv.Atoi(tmp)
 
 	if err != nil {
-
 		l.Logger(l.ERROR, "MYSQL_PORT environment variable is not an integer.")
 		os.Exit(1)
 	}
 
-	if Env.MYSQL_PORT == 0 {
-
+	if Env.MySQLPort == 0 {
 		l.Logger(l.ERROR, "MYSQL_PORT must be greater than zero.")
 		os.Exit(1)
-
 	}
 
 	tmp = os.Getenv("MYSQL_TLS")
 
 	if tmp == "true" {
-		Env.MYSQL_TLS = true
+		Env.MySQLTLS = true
 	} else {
-		Env.MYSQL_TLS = false
+		Env.MySQLTLS = false
+	}
+
+	if os.Getenv("MYSQL_TLS_SKIP_VERIFY") == "true" {
+		Env.MySQLTLSSkipVerify = true
+		l.Logger(l.WARN, "MYSQL_TLS_SKIP_VERIFY is enabled — certificate validation is disabled.")
 	}
 
 	/* -- HTTP -- */
 
-	Env.HTTP_LISTEN = os.Getenv("HTTP_LISTEN")
+	tmp = os.Getenv("HTTP_TLS")
 
-	if Env.HTTP_LISTEN == "" {
+	if tmp == "true" {
+		Env.HTTPTLS = true
+	} else {
+		Env.HTTPTLS = false
+	}
+
+	Env.HTTPListen = os.Getenv("HTTP_LISTEN")
+
+	if Env.HTTPListen == "" {
 		l.Logger(l.ERROR, "HTTP_LISTEN environment variable is not set.")
 		os.Exit(1)
 	}
 
-	Env.HTTP_CERT = os.Getenv("HTTP_CERT")
+	Env.HTTPCert = os.Getenv("HTTP_CERT")
+	Env.HTTPKey = os.Getenv("HTTP_KEY")
 
-	if Env.HTTP_CERT == "" {
-		l.Logger(l.ERROR, "HTTP_CERT environment variable is not set.")
-		os.Exit(1)
+	if Env.HTTPTLS {
+		if Env.HTTPCert == "" {
+			l.Logger(l.ERROR, "HTTP_CERT environment variable is not set.")
+			os.Exit(1)
+		}
+		if Env.HTTPKey == "" {
+			l.Logger(l.ERROR, "HTTP_KEY environment variable is not set.")
+			os.Exit(1)
+		}
 	}
 
-	Env.HTTP_KEY = os.Getenv("HTTP_KEY")
+	Env.HTTPMode = os.Getenv("HTTP_MODE")
 
-	if Env.HTTP_KEY == "" {
-		l.Logger(l.ERROR, "HTTP_KEY environment variable is not set.")
-		os.Exit(1)
-	}
-
-	Env.HTTP_MODE = os.Getenv("HTTP_MODE")
-
-	if Env.HTTP_MODE == "" {
+	if Env.HTTPMode == "" {
 		l.Logger(l.ERROR, "HTTP_MODE environment variable is not set.")
 		os.Exit(1)
 	}
 
-	if Env.HTTP_MODE != "release" && Env.HTTP_MODE != "debug" && Env.HTTP_MODE != "test" && Env.HTTP_MODE != "production" {
-		l.Logger(l.ERROR, "Invalid 'HTTP_MODE':  %s.  Valid 'http_modes' are 'release', 'debug', 'test' and 'production'.", Env.HTTP_MODE)
-	}
-
-	tmp = os.Getenv("HTTP_TLS")
-
-	if tmp == "true" {
-		Env.HTTP_TLS = true
-	} else {
-		Env.HTTP_TLS = false
+	if Env.HTTPMode != "release" && Env.HTTPMode != "debug" && Env.HTTPMode != "test" && Env.HTTPMode != "production" {
+		l.Logger(l.ERROR, "Invalid 'HTTP_MODE':  %s.  Valid 'http_modes' are 'release', 'debug', 'test' and 'production'.", Env.HTTPMode)
 	}
 
 	/* -- Core stuff -- */
 
-	Env.RUNAS = os.Getenv("RUNAS")
+	Env.RunAs = os.Getenv("RUNAS")
 
-	if Env.RUNAS == "" {
+	if Env.RunAs == "" {
 		l.Logger(l.ERROR, "RUNAS environment variable is not set.")
 		os.Exit(1)
 	}
 
-	tmp = os.Getenv("JTW_TOKEN_EXPIRE")
+	tmp = os.Getenv("JWT_TOKEN_EXPIRE")
 
-	Env.JTW_TOKEN_EXPIRE, err = strconv.Atoi(tmp)
+	Env.JWTTokenExpire, err = strconv.Atoi(tmp)
 
 	if err != nil {
-
-		l.Logger(l.ERROR, "JTW_TOKEN_EXPIRE environment variable is not an integer.")
+		l.Logger(l.ERROR, "JWT_TOKEN_EXPIRE environment variable is not an integer.")
 		os.Exit(1)
 	}
 
-	if Env.JTW_TOKEN_EXPIRE == 0 {
-
-		l.Logger(l.ERROR, "JTW_TOKEN_EXPIRE must be greater than zero.")
+	if Env.JWTTokenExpire == 0 {
+		l.Logger(l.ERROR, "JWT_TOKEN_EXPIRE must be greater than zero.")
 		os.Exit(1)
-
 	}
 
 	tmp = os.Getenv("JWT_TOKEN_SECRET")
@@ -195,6 +198,15 @@ func LoadEnv() {
 		os.Exit(1)
 	}
 
-	Env.JWT_TOKEN_SECRET = []byte(tmp)
+	Env.JWTTokenSecret = []byte(tmp)
+
+	tmp = os.Getenv("TOKEN_HMAC_SECRET")
+
+	if tmp == "" {
+		l.Logger(l.ERROR, "TOKEN_HMAC_SECRET environment variable is not set.")
+		os.Exit(1)
+	}
+
+	Env.TokenHMACSecret = []byte(tmp)
 
 }

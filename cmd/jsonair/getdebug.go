@@ -20,7 +20,7 @@ import (
 	"github.com/tidwall/sjson"
 )
 
-func GetDebug(c *gin.Context) {
+func getDebug(c *gin.Context) {
 
 	var err error
 	var name string
@@ -28,16 +28,23 @@ func GetDebug(c *gin.Context) {
 	var debug string
 
 	uuid := c.GetString("uuid")
-	client_name, _ := c.Get("client_name")
+	clientName, _ := c.Get("client_name")
 
-	jsondata, _ := c.GetRawData()
-	jsondata_s := string(jsondata)
+	jsondata, err := c.GetRawData()
 
-	l.Logger(l.INFO, "UUID: %s | Client_Name: %s", uuid, client_name)
+	if err != nil {
+		l.Logger(l.WARN, "Failed to read request body from %s: %v", c.ClientIP(), err)
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "Failed to read request body"})
+		return
+	}
+
+	jsonStr := string(jsondata)
+
+	l.Logger(l.INFO, "UUID: %s | ClientName: %s", uuid, clientName)
 
 	c.Header("Content-Type", "application/json; charset=utf-8")
 
-	name, jtype, err = GetConfigName(c, jsondata_s)
+	name, jtype, err = getConfigName(c, jsonStr)
 
 	if err != nil {
 
@@ -48,24 +55,21 @@ func GetDebug(c *gin.Context) {
 
 	}
 
-	l.Logger(l.INFO, "%s requested 'config' for '%s/%s' for '%s' [%s]", c.ClientIP(), jtype, name, client_name, uuid)
+	l.Logger(l.INFO, "%s requested 'debug' for '%s/%s' for '%s' [%s]", c.ClientIP(), jtype, name, clientName, uuid)
 
-	debug, err = SQL_GetSimple(uuid, name, jtype, "debug")
+	debug, err = sqlGetSimple(c.Request.Context(), uuid, name, jtype, "debug")
 
 	if err != nil {
 
 		l.Logger(l.WARN, "%v", err)
-
-		status := `{"status":"not found","code":404}`
-		c.String(http.StatusNotFound, status)
+		c.String(http.StatusNotFound, `{"status":"not found","code":404}`)
 		c.Abort()
-
 		return
 
 	}
 
-	debug_json, _ := sjson.Set("", "debug", debug)
+	debugJSON, _ := sjson.Set("", "debug", debug)
 
-	c.String(http.StatusOK, debug_json)
+	c.String(http.StatusOK, debugJSON)
 
 }

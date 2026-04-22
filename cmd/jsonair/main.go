@@ -13,10 +13,11 @@ package main
 
 import (
 	"crypto/tls"
-	"io/ioutil"
+	"io"
 	"net"
 	"net/http"
 	"os"
+	"time"
 
 	l "github.com/k9io/jsonair/internal/logger"
 
@@ -30,51 +31,69 @@ func main() {
 	l.Logger(l.BANNER, "Champ Clark III & The Key9, Inc. Team [https://k9.io]")
 	l.Logger(l.BANNER, "Copyright (C) 2026 Key9, Inc. et al.")
 
-	LoadEnv() /* Load environment variables */
+	loadEnv()
 
 	/* Enable remote logging, if needed */
 
-	if Env.SYSLOG_HOST != "" {
-		l.Init_Logger(Env.SYSLOG_HOST, Env.SYSLOG_PROTO)
+	if Env.SyslogHost != "" {
+		l.Init_Logger(Env.SyslogHost, Env.SyslogProto)
 	}
 
-	SQL_Connect()
+	sqlConnect()
 
-	if Env.HTTP_MODE == "production" || Env.HTTP_MODE == "release" {
+	if Env.HTTPMode == "production" || Env.HTTPMode == "release" {
 
 		gin.SetMode("release")
-		gin.DefaultWriter = ioutil.Discard
+		gin.DefaultWriter = io.Discard
 
 	} else {
 
-		gin.SetMode(Env.HTTP_MODE)
+		gin.SetMode(Env.HTTPMode)
 
 	}
 
-	router := gin.Default()
+	router := gin.New()
 
-	if Env.HTTP_MODE != "production" && Env.HTTP_MODE != "release" {
-		router.Use(HTTP_Logger())
+	router.Use(gin.RecoveryWithWriter(gin.DefaultErrorWriter, func(c *gin.Context, err any) {
+		l.Logger(l.ERROR, "Panic recovered: %v", err)
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "Internal server error"})
+	}))
+
+	if Env.HTTPMode != "production" && Env.HTTPMode != "release" {
+		router.Use(httpLogger())
 	}
 
-	router.POST("/api/v1/jsonair/auth/token", AuthToken)
+	router.Use(func(c *gin.Context) {
+		c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 64*1024)
+		c.Next()
+	})
+
+	router.POST("/api/v1/jsonair/auth/token", rateLimitMiddleware(), authToken)
 
 	configGroup := router.Group("/api/v1/jsonair")
 
-	configGroup.Use(JWTMiddleware())
+	configGroup.Use(jwtMiddleware())
 	{
 
-		configGroup.GET("/config", GetConfig)
-		configGroup.GET("/reload", GetReload)
-		configGroup.GET("/debug", GetDebug)
+		configGroup.GET("/config", getConfig)
+		configGroup.GET("/reload", getReload)
+		configGroup.GET("/debug", getDebug)
 
 	}
 
-	if Env.HTTP_TLS == true {
+	server := &http.Server{
+		Handler:           router,
+		ReadTimeout:       10 * time.Second,
+		WriteTimeout:      10 * time.Second,
+		IdleTimeout:       60 * time.Second,
+		ReadHeaderTimeout: 5 * time.Second,
+	}
 
-		l.Logger(l.INFO, "JSONAir is up and listening for TLS traffic on %s.", Env.HTTP_LISTEN)
+	if Env.HTTPTLS {
 
-		cert, err := tls.LoadX509KeyPair(Env.HTTP_CERT, Env.HTTP_KEY)
+		l.Logger(l.INFO, "JSONAir is up and listening for TLS traffic on %s.", Env.HTTPListen)
+
+		cert, err := tls.LoadX509KeyPair(Env.HTTPCert, Env.HTTPKey)
 
 		if err != nil {
 
@@ -84,26 +103,23 @@ func main() {
 		}
 
 		tlsConfig := &tls.Config{
-
 			Certificates: []tls.Certificate{cert},
 		}
 
-		rawListener, err := net.Listen("tcp", Env.HTTP_LISTEN)
+		rawListener, err := net.Listen("tcp", Env.HTTPListen)
 
 		if err != nil {
 
-			l.Logger(l.ERROR, "Failed to bind to port '%s': %v", Env.HTTP_LISTEN, err)
+			l.Logger(l.ERROR, "Failed to bind to port '%s': %v", Env.HTTPListen, err)
 			os.Exit(1)
 
 		}
 
 		tlsListener := tls.NewListener(rawListener, tlsConfig)
 
-		DropPrivileges(Env.RUNAS)
+		dropPrivileges(Env.RunAs)
 
-		l.Logger(l.INFO, "Listening on '%s' for TLS traffic as UID: %d.", Env.HTTP_LISTEN, os.Getuid())
-
-		server := &http.Server{Handler: router}
+		l.Logger(l.INFO, "Listening on '%s' for TLS traffic as UID: %d.", Env.HTTPListen, os.Getuid())
 
 		err = server.Serve(tlsListener)
 
@@ -116,20 +132,20 @@ func main() {
 
 	} else {
 
-		ln, err := net.Listen("tcp", Env.HTTP_LISTEN)
+		ln, err := net.Listen("tcp", Env.HTTPListen)
 
 		if err != nil {
 
-			l.Logger(l.ERROR, "Failed to bind to port '%s': %v", Env.HTTP_LISTEN, err)
+			l.Logger(l.ERROR, "Failed to bind to port '%s': %v", Env.HTTPListen, err)
 			os.Exit(1)
 
 		}
 
-		DropPrivileges(Env.RUNAS)
+		dropPrivileges(Env.RunAs)
 
-		l.Logger(l.INFO, "Listening on '%s' for traffic as UID: %d.", Env.HTTP_LISTEN, os.Getuid())
+		l.Logger(l.INFO, "Listening on '%s' for traffic as UID: %d.", Env.HTTPListen, os.Getuid())
 
-		err = http.Serve(ln, router)
+		err = server.Serve(ln)
 
 		if err != nil {
 

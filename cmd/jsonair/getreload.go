@@ -20,24 +20,29 @@ import (
 	"github.com/tidwall/sjson"
 )
 
-func GetReload(c *gin.Context) {
+func getReload(c *gin.Context) {
 
 	var err error
 	var name string
 	var jtype string
 	var reload string
 
-	//	uuid := c.MustGet("uuid").(string) /* gin will panic if this isn't there (as it should) */
-
 	uuid := c.GetString("uuid")
-	client_name, _ := c.Get("client_name")
+	clientName, _ := c.Get("client_name")
 
-	jsondata, _ := c.GetRawData()
-	jsondata_s := string(jsondata)
+	jsondata, err := c.GetRawData()
+
+	if err != nil {
+		l.Logger(l.WARN, "Failed to read request body from %s: %v", c.ClientIP(), err)
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "Failed to read request body"})
+		return
+	}
+
+	jsonStr := string(jsondata)
 
 	c.Header("Content-Type", "application/json; charset=utf-8")
 
-	name, jtype, err = GetConfigName(c, jsondata_s)
+	name, jtype, err = getConfigName(c, jsonStr)
 
 	if err != nil {
 
@@ -48,22 +53,21 @@ func GetReload(c *gin.Context) {
 
 	}
 
-	l.Logger(l.INFO, "%s requested 'config' for '%s/%s' for '%s' [%s]", c.ClientIP(), jtype, name, client_name, uuid)
+	l.Logger(l.INFO, "%s requested 'reload' for '%s/%s' for '%s' [%s]", c.ClientIP(), jtype, name, clientName, uuid)
 
-	reload, err = SQL_GetSimple(uuid, name, jtype, "reload")
+	reload, err = sqlGetSimple(c.Request.Context(), uuid, name, jtype, "reload")
 
 	if err != nil {
 
 		l.Logger(l.WARN, "%v", err)
 		c.String(http.StatusNotFound, `{"status":"not found","code":404}`)
 		c.Abort()
-
 		return
 
 	}
 
-	reload_json, _ := sjson.Set("", "reload", reload)
+	reloadJSON, _ := sjson.Set("", "reload", reload)
 
-	c.String(http.StatusOK, reload_json)
+	c.String(http.StatusOK, reloadJSON)
 
 }

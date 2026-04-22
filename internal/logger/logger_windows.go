@@ -32,6 +32,7 @@ const (
 	NOTICE = 3
 	DEBUG  = 4
 	ERROR  = 5
+	BANNER = 6
 )
 
 func Init_Logger(host string, proto string) {
@@ -89,7 +90,7 @@ func Logger(log_type int, format string, args ...interface{}) {
 
 	default:
 
-		log.Printf("%s %s", red("!! Unknown logging type: %s !!"), log_type)
+		log.Printf("%s %d", red("!! Unknown logging type !!"), log_type)
 
 	}
 

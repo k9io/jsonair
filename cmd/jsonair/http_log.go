@@ -19,16 +19,22 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func HTTP_Logger() gin.HandlerFunc {
+func httpLogger() gin.HandlerFunc {
 
 	return func(c *gin.Context) {
 
-		clientIP := c.ClientIP()
+		start := time.Now()
 
-		now := time.Now()
-
-		l.Logger(l.INFO, "[%s] %s %s %s", now.Format(time.RFC3339), c.Request.Method, c.Request.URL.Path, clientIP)
 		c.Next()
+
+		l.Logger(l.INFO, "[%s] %s %s %s %d %s",
+			start.Format(time.RFC3339),
+			c.Request.Method,
+			c.Request.URL.Path,
+			c.ClientIP(),
+			c.Writer.Status(),
+			time.Since(start),
+		)
 
 	}
 }

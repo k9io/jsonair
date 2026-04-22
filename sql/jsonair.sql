@@ -8,10 +8,11 @@ CREATE TABLE `keys` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `uuid` varchar(36) NOT NULL,
   `name` varchar(64) NOT NULL,
-  `key` varchar(255) NOT NULL,
+  `key` varchar(255) COLLATE utf8mb4_bin NOT NULL,
   `created` timestamp NOT NULL,
   `last_login` timestamp NOT NULL,
-  PRIMARY KEY (`id`,`uuid`)
+  PRIMARY KEY (`id`,`uuid`),
+  UNIQUE KEY `idx_key` (`key`)
 ) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --

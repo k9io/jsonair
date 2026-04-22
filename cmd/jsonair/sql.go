@@ -12,134 +12,150 @@
 package main
 
 import (
+	"context"
+	"crypto/hmac"
 	"crypto/sha256"
 	"crypto/tls"
-
+	"database/sql"
+	"encoding/hex"
 	"fmt"
 	"os"
+	"time"
 
 	l "github.com/k9io/jsonair/internal/logger"
 
-	"database/sql"
 	"github.com/go-sql-driver/mysql"
 )
 
-func SQL_Connect() {
+func sqlConnect() {
 
 	var err error
 
-	cfg1 := mysql.Config{
-		User:                 Env.MYSQL_USER,
-		Passwd:               Env.MYSQL_PASS,
+	cfg := mysql.Config{
+		User:                 Env.MySQLUser,
+		Passwd:               Env.MySQLPass,
 		Net:                  "tcp",
-		Addr:                 Env.MYSQL_HOST,
-		DBName:               Env.MYSQL_DB,
+		Addr:                 Env.MySQLHost,
+		DBName:               Env.MySQLDB,
 		AllowNativePasswords: true,
 	}
 
 	/* Enable TLS */
 
-	if Env.MYSQL_TLS == true {
+	if Env.MySQLTLS {
 
-		cfg1.TLSConfig = "skip-verify" /* Make this a config? */
-		cfg1.TLS = &tls.Config{
-			MinVersion: tls.VersionTLS12,
-			MaxVersion: tls.VersionTLS12,
+		cfg.TLS = &tls.Config{
+			MinVersion:         tls.VersionTLS12,
+			InsecureSkipVerify: Env.MySQLTLSSkipVerify,
 		}
 
 	} else {
 
 		/* Disable TLS */
 
-		cfg1.TLSConfig = ""
-		cfg1.TLS = nil
+		cfg.TLSConfig = ""
+		cfg.TLS = nil
 
 	}
 
-	Env.DB, err = sql.Open("mysql", cfg1.FormatDSN())
+	Env.DB, err = sql.Open("mysql", cfg.FormatDSN())
 
 	if err != nil {
 		l.Logger(l.ERROR, "Cannot connect to database. %s\n", err.Error())
 		os.Exit(1)
 	}
 
+	if err = Env.DB.Ping(); err != nil {
+		l.Logger(l.ERROR, "Database unreachable: %s\n", err.Error())
+		os.Exit(1)
+	}
+
+	Env.DB.SetMaxOpenConns(25)
+	Env.DB.SetMaxIdleConns(5)
+	Env.DB.SetConnMaxLifetime(5 * time.Minute)
+
 }
 
-func SQL_Auth(pat string) (bool, string, string) {
+func sqlAuth(ctx context.Context, pat string) (bool, string, string) {
 
-	var auth_check string
+	var authCheck string
 	var name string
 	var uuid string
 
-	/* SHA256 the users PAT */
+	/* HMAC-SHA256 the users PAT using the server-side secret */
 
-	hash_pat := fmt.Sprintf("%x", sha256.Sum256([]byte(pat)))
+	mac := hmac.New(sha256.New, Env.TokenHMACSecret)
+	mac.Write([]byte(pat))
+	hashPat := hex.EncodeToString(mac.Sum(nil))
 
-	err := Env.DB.QueryRow("SELECT `id`,`name`,`uuid` FROM `keys` WHERE `token`=? LIMIT 1", hash_pat).Scan(&auth_check, &name, &uuid)
+	err := Env.DB.QueryRowContext(ctx, "SELECT `id`,`name`,`uuid` FROM `keys` WHERE `key`=? LIMIT 1", hashPat).Scan(&authCheck, &name, &uuid)
 
 	if err != nil && err != sql.ErrNoRows {
-
 		l.Logger(l.ERROR, "Cannot query SQL: %v", err.Error())
 		return false, "", ""
 	}
 
-	if err == sql.ErrNoRows || auth_check == "" {
-
+	if err == sql.ErrNoRows || authCheck == "" {
 		return false, "", ""
+	}
+
+	if err := sqlUpdateLastLogin(ctx, uuid, hashPat); err != nil {
+		l.Logger(l.WARN, "Failed to update last_login for uuid %s: %v", uuid, err)
 	}
 
 	return true, name, uuid
 }
 
-func SQL_GetConfig(uuid string, name string, jtype string) (string, error) {
+func sqlGetConfig(ctx context.Context, uuid string, name string, jtype string) (string, error) {
 
-	var config_data string
+	var configData string
 
-	err := Env.DB.QueryRow("SELECT `config_data` FROM `configurations` WHERE `uuid`=? AND `name`=? AND `type`=? LIMIT 1", uuid, name, jtype).Scan(&config_data)
+	err := Env.DB.QueryRowContext(ctx, "SELECT `config_data` FROM `configurations` WHERE `uuid`=? AND `name`=? AND `type`=? LIMIT 1", uuid, name, jtype).Scan(&configData)
 
 	if err != nil && err != sql.ErrNoRows {
-
 		return "", fmt.Errorf("Database error: %v", err)
-
 	}
 
 	if err == sql.ErrNoRows {
-
-		return "", fmt.Errorf("Configuration '%s' not found for uuid %s'", name, uuid)
-
+		return "", fmt.Errorf("Configuration '%s' not found for uuid '%s'", name, uuid)
 	}
 
-	return config_data, nil
+	return configData, nil
 
 }
 
-func SQL_GetSimple(uuid string, name string, jtype string, ja_type string) (string, error) {
+func sqlGetSimple(ctx context.Context, uuid string, name string, jtype string, jaType string) (string, error) {
 
-	var reload string
+	var query string
 
-	query := fmt.Sprintf("SELECT `%s` FROM `configurations` WHERE `uuid`=? AND `name`=? AND `type`=? LIMIT 1", ja_type)
+	switch jaType {
+	case "reload":
+		query = "SELECT `reload` FROM `configurations` WHERE `uuid`=? AND `name`=? AND `type`=? LIMIT 1"
+	case "debug":
+		query = "SELECT `debug` FROM `configurations` WHERE `uuid`=? AND `name`=? AND `type`=? LIMIT 1"
+	default:
+		return "", fmt.Errorf("Invalid field '%s'", jaType)
+	}
 
-	err := Env.DB.QueryRow(query, uuid, name, jtype).Scan(&reload)
+	var result string
+
+	err := Env.DB.QueryRowContext(ctx, query, uuid, name, jtype).Scan(&result)
 
 	if err != nil && err != sql.ErrNoRows {
-
 		return "", fmt.Errorf("Database error: %v", err)
-
 	}
 
 	if err == sql.ErrNoRows {
-
-		return "", fmt.Errorf("Reload for '%s' not found for uuid %s'", name, uuid)
-
+		return "", fmt.Errorf("'%s' for '%s' not found for uuid '%s'", jaType, name, uuid)
 	}
 
-	return reload, nil
+	return result, nil
 
 }
 
-func SQL_Update_Last_Login(uuid string, key string) error {
+func sqlUpdateLastLogin(ctx context.Context, uuid string, key string) error {
 
-	_, err := Env.DB.Exec("UPDATE `keys` SET `last_login`=now() WHERE `uuid`=? AND `key`=?", uuid, key)
+	_, err := Env.DB.ExecContext(ctx, "UPDATE `keys` SET `last_login`=now() WHERE `uuid`=? AND `key`=?", uuid, key)
 
 	return err
 
