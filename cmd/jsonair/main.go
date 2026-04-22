@@ -91,8 +91,6 @@ func main() {
 
 	if Env.HTTPTLS {
 
-		l.Logger(l.INFO, "JSONAir is up and listening for TLS traffic on %s.", Env.HTTPListen)
-
 		cert, err := tls.LoadX509KeyPair(Env.HTTPCert, Env.HTTPKey)
 
 		if err != nil {
