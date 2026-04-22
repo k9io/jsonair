@@ -88,7 +88,7 @@ func sqlAuth(ctx context.Context, pat string) (bool, string, string) {
 	mac.Write([]byte(pat))
 	hashPat := hex.EncodeToString(mac.Sum(nil))
 
-	err := Env.DB.QueryRowContext(ctx, "SELECT `id`,`name`,`uuid` FROM `keys` WHERE `key`=? LIMIT 1", hashPat).Scan(&authCheck, &name, &uuid)
+	err := Env.DB.QueryRowContext(ctx, "SELECT `id`,`name`,`uuid` FROM `keys` WHERE `token`=? LIMIT 1", hashPat).Scan(&authCheck, &name, &uuid)
 
 	if err != nil && err != sql.ErrNoRows {
 		l.Logger(l.ERROR, "Cannot query SQL: %v", err.Error())
@@ -153,9 +153,9 @@ func sqlGetSimple(ctx context.Context, uuid string, name string, jtype string, j
 
 }
 
-func sqlUpdateLastLogin(ctx context.Context, uuid string, key string) error {
+func sqlUpdateLastLogin(ctx context.Context, uuid string, hashpat string) error {
 
-	_, err := Env.DB.ExecContext(ctx, "UPDATE `keys` SET `last_login`=now() WHERE `uuid`=? AND `key`=?", uuid, key)
+	_, err := Env.DB.ExecContext(ctx, "UPDATE `keys` SET `last_login`=now() WHERE `uuid`=? AND `token`=?", uuid, hashpat)
 
 	return err
 
