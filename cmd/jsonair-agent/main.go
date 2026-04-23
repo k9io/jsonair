@@ -109,7 +109,7 @@ func processData(results string) {
 
 			l.Logger(l.NOTICE, "%s does not exist.  Creating it.", Env.CONFIG_FILE)
 
-			err = os.WriteFile(Env.CONFIG_FILE, r_data, 0644)
+			err = os.WriteFile(Env.CONFIG_FILE, r_data, Env.MASK)
 
 			if err != nil {
 
@@ -194,7 +194,8 @@ func backupAndPrune(fullPath string, keepCount int) error {
 
 	/* 1. Create the new backup */
 
-	timestamp := time.Now().Format("20060102-150405")
+	now := time.Now()
+	timestamp := fmt.Sprintf("%s-%09d", now.Format("20060102-150405"), now.Nanosecond())
 	backupPath := fmt.Sprintf("%s.%s.bak", fullPath, timestamp)
 
 	if err := copyFile(fullPath, backupPath); err != nil {

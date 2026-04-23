@@ -88,7 +88,10 @@ func sqlAuth(ctx context.Context, pat string) (bool, string, string) {
 	mac.Write([]byte(pat))
 	hashPat := hex.EncodeToString(mac.Sum(nil))
 
-	err := Env.DB.QueryRowContext(ctx, "SELECT `id`,`name`,`uuid` FROM `keys` WHERE `token`=? LIMIT 1", hashPat).Scan(&authCheck, &name, &uuid)
+	queryCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	err := Env.DB.QueryRowContext(queryCtx, "SELECT `id`,`name`,`uuid` FROM `keys` WHERE `token`=? LIMIT 1", hashPat).Scan(&authCheck, &name, &uuid)
 
 	if err != nil && err != sql.ErrNoRows {
 		l.Logger(l.ERROR, "Cannot query SQL: %v", err.Error())
@@ -110,7 +113,10 @@ func sqlGetConfig(ctx context.Context, uuid string, name string, jtype string) (
 
 	var configData string
 
-	err := Env.DB.QueryRowContext(ctx, "SELECT `config_data` FROM `configurations` WHERE `uuid`=? AND `name`=? AND `type`=? LIMIT 1", uuid, name, jtype).Scan(&configData)
+	queryCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	err := Env.DB.QueryRowContext(queryCtx, "SELECT `config_data` FROM `configurations` WHERE `uuid`=? AND `name`=? AND `type`=? LIMIT 1", uuid, name, jtype).Scan(&configData)
 
 	if err != nil && err != sql.ErrNoRows {
 		return "", fmt.Errorf("Database error: %v", err)
@@ -139,7 +145,10 @@ func sqlGetSimple(ctx context.Context, uuid string, name string, jtype string, j
 
 	var result string
 
-	err := Env.DB.QueryRowContext(ctx, query, uuid, name, jtype).Scan(&result)
+	queryCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	err := Env.DB.QueryRowContext(queryCtx, query, uuid, name, jtype).Scan(&result)
 
 	if err != nil && err != sql.ErrNoRows {
 		return "", fmt.Errorf("Database error: %v", err)
@@ -155,7 +164,10 @@ func sqlGetSimple(ctx context.Context, uuid string, name string, jtype string, j
 
 func sqlUpdateLastLogin(ctx context.Context, uuid string, hashpat string) error {
 
-	_, err := Env.DB.ExecContext(ctx, "UPDATE `keys` SET `last_login`=now() WHERE `uuid`=? AND `token`=?", uuid, hashpat)
+	queryCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	_, err := Env.DB.ExecContext(queryCtx, "UPDATE `keys` SET `last_login`=now() WHERE `uuid`=? AND `token`=?", uuid, hashpat)
 
 	return err
 

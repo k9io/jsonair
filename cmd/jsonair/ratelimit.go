@@ -12,6 +12,7 @@
 package main
 
 import (
+	"context"
 	"net/http"
 	"sync"
 	"time"
@@ -57,15 +58,22 @@ func cleanLimiters() {
 	}
 }
 
-func rateLimitMiddleware() gin.HandlerFunc {
-	// Periodically clean up stale entries to prevent unbounded memory growth.
+func StartRateLimiterCleanup(ctx context.Context) {
 	go func() {
+		ticker := time.NewTicker(5 * time.Minute)
+		defer ticker.Stop()
 		for {
-			time.Sleep(5 * time.Minute)
-			cleanLimiters()
+			select {
+			case <-ticker.C:
+				cleanLimiters()
+			case <-ctx.Done():
+				return
+			}
 		}
 	}()
+}
 
+func rateLimitMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		limiter := getLimiter(c.ClientIP())
 		if !limiter.Allow() {

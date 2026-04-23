@@ -12,11 +12,15 @@
 package main
 
 import (
+	"context"
 	"crypto/tls"
 	"io"
 	"net"
 	"net/http"
 	"os"
+	"os/signal"
+	"runtime/debug"
+	"syscall"
 	"time"
 
 	l "github.com/k9io/jsonair/internal/logger"
@@ -56,9 +60,19 @@ func main() {
 	router := gin.New()
 
 	router.Use(gin.RecoveryWithWriter(gin.DefaultErrorWriter, func(c *gin.Context, err any) {
-		l.Logger(l.ERROR, "Panic recovered: %v", err)
+		l.Logger(l.ERROR, "Panic recovered: %v\n%s", err, debug.Stack())
 		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "Internal server error"})
 	}))
+
+	router.Use(func(c *gin.Context) {
+		c.Header("X-Frame-Options", "DENY")
+		c.Header("X-Content-Type-Options", "nosniff")
+		c.Header("X-XSS-Protection", "1; mode=block")
+		if Env.HTTPTLS {
+			c.Header("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+		}
+		c.Next()
+	})
 
 	if Env.HTTPMode != "production" && Env.HTTPMode != "release" {
 		router.Use(httpLogger())
@@ -90,6 +104,11 @@ func main() {
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
+	defer stop()
+
+	StartRateLimiterCleanup(ctx)
+
 	if Env.HTTPTLS {
 
 		cert, err := tls.LoadX509KeyPair(Env.HTTPCert, Env.HTTPKey)
@@ -120,13 +139,27 @@ func main() {
 
 		l.Logger(l.INFO, "Listening on '%s' for TLS traffic as UID: %d.", Env.HTTPListen, os.Getuid())
 
-		err = server.Serve(tlsListener)
+		serveErr := make(chan error, 1)
+		go func() {
+			if err := server.Serve(tlsListener); err != nil && err != http.ErrServerClosed {
+				serveErr <- err
+			}
+			close(serveErr)
+		}()
 
-		if err != nil {
-
+		select {
+		case err := <-serveErr:
 			l.Logger(l.ERROR, "Server failed: %v", err)
 			os.Exit(1)
-
+		case <-ctx.Done():
+			l.Logger(l.INFO, "Shutdown signal received, draining connections...")
+			shutdownCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			defer cancel()
+			if err := server.Shutdown(shutdownCtx); err != nil {
+				l.Logger(l.ERROR, "Server shutdown error: %v", err)
+			}
+			Env.DB.Close()
+			l.Logger(l.INFO, "Server stopped cleanly.")
 		}
 
 	} else {
@@ -144,13 +177,27 @@ func main() {
 
 		l.Logger(l.INFO, "Listening on '%s' for traffic as UID: %d.", Env.HTTPListen, os.Getuid())
 
-		err = server.Serve(ln)
+		serveErr := make(chan error, 1)
+		go func() {
+			if err := server.Serve(ln); err != nil && err != http.ErrServerClosed {
+				serveErr <- err
+			}
+			close(serveErr)
+		}()
 
-		if err != nil {
-
+		select {
+		case err := <-serveErr:
 			l.Logger(l.ERROR, "Server failed: %v", err)
 			os.Exit(1)
-
+		case <-ctx.Done():
+			l.Logger(l.INFO, "Shutdown signal received, draining connections...")
+			shutdownCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			defer cancel()
+			if err := server.Shutdown(shutdownCtx); err != nil {
+				l.Logger(l.ERROR, "Server shutdown error: %v", err)
+			}
+			Env.DB.Close()
+			l.Logger(l.INFO, "Server stopped cleanly.")
 		}
 
 	}

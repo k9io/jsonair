@@ -62,13 +62,6 @@ func LoadEnv() {
 		os.Exit(1)
 	}
 
-	Env.JSONAIR_PAT = os.Getenv("JSONAIR_PAT")
-
-	if Env.JSONAIR_PAT == "" {
-		l.Logger(l.ERROR, "JSONAIR_PAT environment variable is not set.")
-		os.Exit(1)
-	}
-
 	Env.JSONAIR_URL = os.Getenv("JSONAIR_URL")
 
 	if Env.JSONAIR_URL == "" {
@@ -94,13 +87,6 @@ func LoadEnv() {
 
 	if Env.CONFIG_FILE == "" {
 		l.Logger(l.ERROR, "CONFIG_FILE environment variable is not set.")
-		os.Exit(1)
-	}
-
-	Env.RUNAS = os.Getenv("RUNAS")
-
-	if Env.RUNAS == "" {
-		l.Logger(l.ERROR, "RUNAS environment variable is not set.")
 		os.Exit(1)
 	}
 
@@ -151,10 +137,13 @@ func LoadEnv() {
 			Env.MASK = os.FileMode(parsedMode)
 
 		} else {
-			log.Printf("Invalid mode %s, falling back to 0600", modeStr)
-
+			log.Printf("Invalid MASK %q, falling back to 0600", modeStr)
 			Env.MASK = os.FileMode(0600)
 		}
+
+	} else {
+
+		Env.MASK = os.FileMode(0600)
 
 	}
 

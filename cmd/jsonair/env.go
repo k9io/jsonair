@@ -166,6 +166,7 @@ func loadEnv() {
 
 	if Env.HTTPMode != "release" && Env.HTTPMode != "debug" && Env.HTTPMode != "test" && Env.HTTPMode != "production" {
 		l.Logger(l.ERROR, "Invalid 'HTTP_MODE':  %s.  Valid 'http_modes' are 'release', 'debug', 'test' and 'production'.", Env.HTTPMode)
+		os.Exit(1)
 	}
 
 	/* -- Core stuff -- */

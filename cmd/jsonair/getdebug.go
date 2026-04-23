@@ -28,7 +28,7 @@ func getDebug(c *gin.Context) {
 	var debug string
 
 	uuid := c.GetString("uuid")
-	clientName, _ := c.Get("client_name")
+	clientName := c.GetString("client_name")
 
 	jsondata, err := c.GetRawData()
 

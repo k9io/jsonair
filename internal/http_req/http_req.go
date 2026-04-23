@@ -22,7 +22,7 @@ package http_req
 
 import (
 	"bytes"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"os"
 	"time"
@@ -32,7 +32,7 @@ import (
 
 func HTTP(json_data string, url string, http_type string, bearer_token string) (string, int) {
 
-	client := http.Client{Timeout: time.Duration(60) * time.Second}
+	client := http.Client{Timeout: 30 * time.Second}
 
 	req, err := http.NewRequest(http_type, url, bytes.NewBuffer([]byte(json_data)))
 
@@ -43,9 +43,9 @@ func HTTP(json_data string, url string, http_type string, bearer_token string) (
 
 	}
 
-	if bearer_token != "" { 
+	if bearer_token != "" {
 
-		req.Header.Set("Authorization", "Bearer " + bearer_token)
+		req.Header.Set("Authorization", "Bearer "+bearer_token)
 
 	}
 
@@ -58,7 +58,9 @@ func HTTP(json_data string, url string, http_type string, bearer_token string) (
 
 	}
 
-	body, err := ioutil.ReadAll(res.Body)
+	defer res.Body.Close()
+
+	body, err := io.ReadAll(res.Body)
 
 	if err != nil {
 
@@ -67,8 +69,6 @@ func HTTP(json_data string, url string, http_type string, bearer_token string) (
 
 	}
 
-	sb := string(body)
-
-	return sb, res.StatusCode
+	return string(body), res.StatusCode
 
 }

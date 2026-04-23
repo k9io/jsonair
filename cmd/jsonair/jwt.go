@@ -59,6 +59,12 @@ func jwtMiddleware() gin.HandlerFunc {
 			return
 		}
 
+		if cl.UUID == "" || cl.ClientName == "" {
+			l.Logger(l.NOTICE, "Token missing required claims from %s", c.ClientIP())
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Session expired or invalid"})
+			return
+		}
+
 		l.Logger(l.NOTICE, "Authentication success for %s [%s] from %s.", c.ClientIP(), cl.UUID, cl.ClientName)
 
 		c.Set("uuid", cl.UUID)

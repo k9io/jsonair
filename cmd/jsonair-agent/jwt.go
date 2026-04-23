@@ -12,11 +12,10 @@
 package main
 
 import (
-	"fmt"
-	"os"
-
 	"encoding/json"
+	"fmt"
 	"net/http"
+	"os"
 
 	"github.com/k9io/jsonair/internal/define"
 	"github.com/k9io/jsonair/internal/http_req"
@@ -28,15 +27,25 @@ type JWT_Struct struct {
 	Access_Token string
 }
 
+type patRequest struct {
+	Token string `json:"token"`
+}
+
 func PAT_Auth() string {
 
 	var err error
 	var JWT *JWT_Struct
 
-	pat_json := fmt.Sprintf(`{"token": "%s"}`, Env.JSONAIR_PAT)
+	patReq := patRequest{Token: Env.JSONAIR_PAT}
+	patBytes, err := json.Marshal(patReq)
+	if err != nil {
+		l.Logger(l.ERROR, "Cannot marshal PAT request: %v", err)
+		os.Exit(1)
+	}
+
 	auth_url := fmt.Sprintf("%s/api/%s/jsonair/auth/token", Env.JSONAIR_URL, define.VERSION)
 
-	results, status_code := http_req.HTTP(pat_json, auth_url, "POST", "")
+	results, status_code := http_req.HTTP(string(patBytes), auth_url, "POST", "")
 
 	if status_code != http.StatusOK {
 
