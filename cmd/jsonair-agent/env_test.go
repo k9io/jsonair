@@ -25,6 +25,7 @@ func setRequiredEnvVars(t *testing.T) {
 	t.Setenv("JSONAIR_NAME", "test.config")
 	t.Setenv("JSONAIR_TYPE", "testsub")
 	t.Setenv("CONFIG_FILE", "/tmp/test-agent.json")
+	t.Setenv("RELOAD_COMMAND", "/usr/bin/true")
 	t.Setenv("SLEEP", "10")
 	t.Setenv("PRUNE", "5")
 }
