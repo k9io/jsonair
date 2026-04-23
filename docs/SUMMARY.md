@@ -7,6 +7,7 @@
   * [2.3 Compiling JSONAir](2.3-compiling-jsonair.md)
   * [2.4 Database Setup](2.4-database-setup.md)
   * [2.5 Configuring and Running JSONAir](2.5-configuration.md)
+  * [2.6 Configuring and Running the JSONAir Agent](2.6-agent-configuration.md)
 * [3. Using the API](3-using-the-api.md)
   * [3.1 Authentication](3.1-authentication.md)
   * [3.2 Making API Requests](3.2-make-api-requests.md)
