@@ -35,6 +35,7 @@ type Environment_Struct struct {
 	SLEEP       time.Duration
 	PRUNE       int
 	MASK        os.FileMode
+	RELOAD_COMMAND  string
 }
 
 var Env Environment_Struct
@@ -87,6 +88,13 @@ func LoadEnv() {
 
 	if Env.CONFIG_FILE == "" {
 		l.Logger(l.ERROR, "CONFIG_FILE environment variable is not set.")
+		os.Exit(1)
+	}
+
+	Env.RELOAD_COMMAND = os.Getenv("RELOAD_COMMAND")
+
+	if Env.RELOAD_COMMAND == "" {
+		l.Logger(l.ERROR, "RELOAD_COMMAND environment variable is not set.")
 		os.Exit(1)
 	}
 

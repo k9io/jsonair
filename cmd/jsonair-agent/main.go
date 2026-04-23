@@ -15,6 +15,7 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"encoding/base64"
+	"os/exec"
 	"errors"
 	"fmt"
 	"io"
@@ -172,8 +173,7 @@ func processData(results string) {
 		return 
 	}
 
-	// 2. Write the data to the original path
-	// 0644 provides read/write for owner, and read-only for others
+	/* Write the data to the original path */
 
 	err = os.WriteFile(Env.CONFIG_FILE, r_data, Env.MASK)
 
@@ -182,6 +182,31 @@ func processData(results string) {
 		l.Logger(l.WARN, "Failed to overwrite file: %v", err)
 		return
 	}
+
+	/* Execute the "reload" command.  This could be "killall -1", 
+	   "systemctl", etc. */
+
+	l.Logger(l.ERROR, "Executing RELOAD_COMMAND: %s", Env.RELOAD_COMMAND)
+
+        /* Securely setup the command for execution */
+
+        cmd_parts := strings.Fields(Env.RELOAD_COMMAND)
+
+        head := cmd_parts[0]
+        args := cmd_parts[1:]
+
+	
+        /* Call the command */
+
+        cmd_exec := exec.Command(head, args...)
+
+        out, err := cmd_exec.CombinedOutput()
+
+        if err != nil {
+                l.Logger(l.ERROR, "Error executing command: %v", err)
+		l.Logger(l.ERROR, "Command output: %s", string(out))
+        }
+
 
 /* Task is done,  naturally return and wait for the next round */
 

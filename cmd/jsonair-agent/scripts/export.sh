@@ -10,6 +10,7 @@ export CONFIG_FILE="/etc/suricata/suricata.yaml"
 export PRUNE=5
 export MASK=0644
 export SLEEP=300
+export RELOAD_COMMAND="/usr/bin/killall -1 suricata"
 
 
 ./jsonair-agent 
