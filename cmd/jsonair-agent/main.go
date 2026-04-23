@@ -45,7 +45,13 @@ func main() {
 
 	for {
 
-		results, status_code := http_req.HTTP(config_json, config_url, "GET", bearerToken)
+		results, status_code, err := http_req.HTTP(config_json, config_url, "GET", bearerToken)
+
+		if err != nil { 
+
+			l.Logger(l.ERROR, "%v", err)
+
+		}
 
 		/* If HTTP is a 401,  re-authenticated with PAT */
 
@@ -56,12 +62,16 @@ func main() {
 
 		}
 
-		/* Some unknown status,  we exit */
 
-		if status_code != 200 && status_code != 401 {
+		/* If the status is not "good", then we log it.  We don't exit the
+		   program.  We "sleep" and hope the issue is resolve upstream.  For
+		   example, if JSONAir returns a status_code 500,  we don't want the
+		   agent to die.  If the status_code == 0,  then we know it is due
+		   to a connection issue (connection refused, etc).  */
+
+		if status_code != 200 && status_code != 401 && status_code != 0 {
 
 			l.Logger(l.ERROR, "Got bad response %v.", status_code)
-			os.Exit(1)
 
 		}
 
@@ -72,7 +82,6 @@ func main() {
 			processData(results)
 
 		}
-
 
 		/* Sleep until next round */
 

@@ -23,14 +23,13 @@ package http_req
 import (
 	"bytes"
 	"io"
+	"fmt"
 	"net/http"
-	"os"
 	"time"
 
-	l "github.com/k9io/jsonair/internal/logger"
 )
 
-func HTTP(json_data string, url string, http_type string, bearer_token string) (string, int) {
+func HTTP(json_data string, url string, http_type string, bearer_token string) (string, int, error) {
 
 	client := http.Client{Timeout: 30 * time.Second}
 
@@ -38,8 +37,7 @@ func HTTP(json_data string, url string, http_type string, bearer_token string) (
 
 	if err != nil {
 
-		l.Logger(l.ERROR, "Unable to establish API connection: %v", err)
-		os.Exit(1)
+		return "", 0, fmt.Errorf("Unable to establish API connection: %v", err)
 
 	}
 
@@ -53,8 +51,7 @@ func HTTP(json_data string, url string, http_type string, bearer_token string) (
 
 	if err != nil {
 
-		l.Logger(l.ERROR, "Unable to client.Do(): %v", err)
-		os.Exit(1)
+		return "", 0, fmt.Errorf("Unable to client.Do(): %v", err)
 
 	}
 
@@ -64,11 +61,10 @@ func HTTP(json_data string, url string, http_type string, bearer_token string) (
 
 	if err != nil {
 
-		l.Logger(l.ERROR, "Unable to get body from request: %v", err)
-		os.Exit(1)
+		return "", 0, fmt.Errorf("Unable to get body from request: %v", err)
 
 	}
 
-	return string(body), res.StatusCode
+	return string(body), res.StatusCode, nil 
 
 }

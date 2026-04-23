@@ -45,7 +45,14 @@ func PAT_Auth() string {
 
 	auth_url := fmt.Sprintf("%s/api/%s/jsonair/auth/token", Env.JSONAIR_URL, define.VERSION)
 
-	results, status_code := http_req.HTTP(string(patBytes), auth_url, "POST", "")
+	results, status_code, err := http_req.HTTP(string(patBytes), auth_url, "POST", "")
+
+	if err != nil { 
+
+		l.Logger(l.ERROR, "%v", err)
+		return ""
+
+	}
 
 	if status_code != http.StatusOK {
 
