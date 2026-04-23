@@ -20,6 +20,7 @@ import (
 	"time"
 
 	l "github.com/k9io/jsonair/internal/logger"
+	"github.com/k9io/jsonair/internal/droppriv"
 
 	"github.com/gin-gonic/gin"
 )
@@ -115,7 +116,7 @@ func main() {
 
 		tlsListener := tls.NewListener(rawListener, tlsConfig)
 
-		dropPrivileges(Env.RunAs)
+		droppriv.DropPrivileges(Env.RunAs)
 
 		l.Logger(l.INFO, "Listening on '%s' for TLS traffic as UID: %d.", Env.HTTPListen, os.Getuid())
 
@@ -139,7 +140,7 @@ func main() {
 
 		}
 
-		dropPrivileges(Env.RunAs)
+		droppriv.DropPrivileges(Env.RunAs)
 
 		l.Logger(l.INFO, "Listening on '%s' for traffic as UID: %d.", Env.HTTPListen, os.Getuid())
 

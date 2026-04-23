@@ -1,6 +1,6 @@
 module github.com/k9io/jsonair
 
-go 1.25.0
+go 1.26.2
 
 require (
 	github.com/fatih/color v1.19.0
