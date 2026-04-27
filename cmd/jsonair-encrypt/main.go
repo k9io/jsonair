@@ -9,15 +9,18 @@
  **
  **/
 
-// jsonair-encrypt encrypts a Base64-encoded configuration value for storage
-// in the JSONAir database.
-//
-// Usage:
-//
-//	echo -n "<base64-encoded-config>" | CONFIG_ENCRYPT_SECRET=<secret> ./jsonair-encrypt
-//
-// The encrypted output is written to stdout and is ready to be inserted
-// directly into the config_data column of the configurations table.
+/* jsonair-encrypt encrypts a Base64-encoded configuration value for storage
+   in the JSONAir database.
+
+ Usage:
+
+  echo -n "<base64-encoded-config>" | CONFIG_ENCRYPT_SECRET=<secret> ./jsonair-encrypt
+
+  The encrypted output is written to stdout and is ready to be inserted
+  directly into the config_data column of the configurations table.
+
+*/
+
 package main
 
 import (

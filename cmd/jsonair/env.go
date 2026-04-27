@@ -87,13 +87,6 @@ func loadEnv() {
 		os.Exit(1)
 	}
 
-	Env.MySQLTable = os.Getenv("MYSQL_TABLE")
-
-	if Env.MySQLTable == "" {
-		l.Logger(l.ERROR, "MYSQL_TABLE environment variable is not set.")
-		os.Exit(1)
-	}
-
 	Env.MySQLHost = os.Getenv("MYSQL_HOST")
 
 	if Env.MySQLHost == "" {

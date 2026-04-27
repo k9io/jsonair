@@ -12,6 +12,8 @@ Some software takes this into account by using system environment variables. Whi
 
 JSONAir tackles this by making configuration distribution ‘a service.’ Configurations for your software can easily be retrieved by calling a simple API.
 
+While many cloud providers offer proprietary configuration storage, these methods often impose a restrictive 'vendor lock-in' that limits future flexibility. JSONAir provides a simple, open-standard alternative, allowing you to secure your configuration data without being tied to a single ecosystem.
+
 JSONAir is agnostic to “how” configuration data is stored. To JSONAir, configuration data is just “data.” It might be legacy flat ASCII files, YAML, JSON, etc. JSONAir doesn’t care. However, this means that your software still needs to “validate” the configuration data.
 
 While there are similar projects to JSONAir, we found them to be overly complicated for most of our use cases. The concept behind JSONAir is for it to remain as simple as possible. It is a configuration retrieval system, and it does not intend to validate, update, or modify configuration data. This makes the JSONAir API incredibly simple and uni-directional (read-only).
@@ -19,4 +21,3 @@ While there are similar projects to JSONAir, we found them to be overly complica
 JSONAir is written in a memory-safe language (Golang) and can be used in containers and clusters itself for high availability. It is meant to be memory and CPU efficient.
 
 Documenation can be found at: https://docs.k9.io/key9-identity/jsonair
-
