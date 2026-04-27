@@ -16,6 +16,7 @@ import (
 	"os"
 	"strconv"
 
+	cry "github.com/k9io/jsonair/internal/crypto"
 	l "github.com/k9io/jsonair/internal/logger"
 
 	_ "github.com/go-sql-driver/mysql"
@@ -48,6 +49,7 @@ type environmentConfig struct {
 	JWTTokenSecret  []byte
 	JWTTokenExpire  int
 	TokenHMACSecret []byte
+	ConfigEncryptKey []byte
 }
 
 var Env environmentConfig
@@ -209,5 +211,14 @@ func loadEnv() {
 	}
 
 	Env.TokenHMACSecret = []byte(tmp)
+
+	tmp = os.Getenv("CONFIG_ENCRYPT_SECRET")
+
+	if tmp == "" {
+		l.Logger(l.ERROR, "CONFIG_ENCRYPT_SECRET environment variable is not set.")
+		os.Exit(1)
+	}
+
+	Env.ConfigEncryptKey = cry.DeriveKey([]byte(tmp))
 
 }

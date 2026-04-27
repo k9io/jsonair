@@ -10,10 +10,10 @@ all: tidy build
 
 # Create the bin directory and build everything
 
-build: jsonair jsonair-agent
+build: jsonair jsonair-agent jsonair-encrypt
 
 jsonair:
-	
+
 	@echo "Building JSONAir....."
 	go build -o $(BINARY_DIR)/jsonair/jsonair ./cmd/jsonair
 
@@ -21,6 +21,11 @@ jsonair-agent:
 
 	@echo "Building JSONAir Agent....."
 	go build -o $(BINARY_DIR)/jsonair-agent/jsonair-agent ./cmd/jsonair-agent
+
+jsonair-encrypt:
+
+	@echo "Building JSONAir Encrypt Tool....."
+	go build -o $(BINARY_DIR)/jsonair-encrypt/jsonair-encrypt ./cmd/jsonair-encrypt
 
 
 build-all:

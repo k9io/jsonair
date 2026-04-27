@@ -15,6 +15,7 @@ import (
 	"encoding/base64"
 	"net/http"
 
+	cry "github.com/k9io/jsonair/internal/crypto"
 	l "github.com/k9io/jsonair/internal/logger"
 
 	"github.com/gin-gonic/gin"
@@ -64,6 +65,20 @@ func getConfig(c *gin.Context) {
 		return
 
 	}
+
+	/* Decrypt the config data */
+
+	plainBytes, err := cry.Decrypt(configData, Env.ConfigEncryptKey)
+
+	if err != nil {
+
+		l.Logger(l.ERROR, "Failed to decrypt config '%s/%s' for uuid '%s': %v", jtype, name, uuid, err)
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "Internal server error"})
+		return
+
+	}
+
+	configData = string(plainBytes)
 
 	/* Does the client want the configuration in Base64 or not */
 
