@@ -14,3 +14,4 @@
   * [3.2 Making API Requests](3.2-make-api-requests.md)
   * [3.3 Golang Examples](3.3-golang-examples.md)
   * [3.4 Curl Examples](3.4-curl-examples.md)
+  * [3.5 Python Examples](3.5-python-examples.md)
