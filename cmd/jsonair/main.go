@@ -59,6 +59,8 @@ func main() {
 
 	router := gin.New()
 
+	router.SetTrustedProxies(nil)
+
 	router.Use(gin.RecoveryWithWriter(gin.DefaultErrorWriter, func(c *gin.Context, err any) {
 		l.Logger(l.ERROR, "Panic recovered: %v\n%s", err, debug.Stack())
 		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "Internal server error"})
