@@ -45,7 +45,9 @@ func LoadEnv() {
 	var tmp string
 	var err error
 
-	godotenv.Load() // Loads .env into the system environment
+        if err := godotenv.Load(); err != nil {
+                l.Logger(l.NOTICE, "No .env file found, using system environment variables.")
+        }
 
 	/* Sanity Checks */
 
