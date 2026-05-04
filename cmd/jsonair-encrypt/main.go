@@ -9,12 +9,16 @@
  **
  **/
 
-/* jsonair-encrypt encrypts a Base64-encoded configuration value for storage
+/* jsonair-encrypt encrypts or decrypts a configuration value for storage
    in the JSONAir database.
 
  Usage:
 
+  # Encrypt
   echo -n "<base64-encoded-config>" | CONFIG_ENCRYPT_SECRET=<secret> ./jsonair-encrypt
+
+  # Decrypt
+  echo -n "<encrypted-value>" | CONFIG_ENCRYPT_SECRET=<secret> ./jsonair-encrypt -d
 
   The encrypted output is written to stdout and is ready to be inserted
   directly into the config_data column of the configurations table.
@@ -24,6 +28,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"io"
 	"os"
@@ -33,6 +38,9 @@ import (
 )
 
 func main() {
+
+	decrypt := flag.Bool("d", false, "decrypt instead of encrypt")
+	flag.Parse()
 
 	godotenv.Load()
 
@@ -45,25 +53,32 @@ func main() {
 
 	key := cry.DeriveKey([]byte(secret))
 
-	plaintext, err := io.ReadAll(os.Stdin)
+	input, err := io.ReadAll(os.Stdin)
 
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error reading stdin: %v\n", err)
 		os.Exit(1)
 	}
 
-	if len(plaintext) == 0 {
+	if len(input) == 0 {
 		fmt.Fprintln(os.Stderr, "Error: no input provided on stdin.")
 		os.Exit(1)
 	}
 
-	encrypted, err := cry.Encrypt(plaintext, key)
-
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error encrypting: %v\n", err)
-		os.Exit(1)
+	if *decrypt {
+		plaintext, err := cry.Decrypt(string(input), key)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error decrypting: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Print(string(plaintext))
+	} else {
+		encrypted, err := cry.Encrypt(input, key)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error encrypting: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Print(encrypted)
 	}
-
-	fmt.Print(encrypted)
 
 }
