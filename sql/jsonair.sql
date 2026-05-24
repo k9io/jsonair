@@ -50,7 +50,7 @@ CREATE TABLE `configurations` (
 LOCK TABLES `configurations` WRITE;
 
 INSERT INTO `configurations` VALUES
-(1,'','RELOADKEY','DEBUGLEVEL','testsub','test.config','{\"config\":\"some value\"}', NOW(), NOW() )
+(1,'','RELOADKEY','DEBUGLEVEL','testsub','test.config','{\"config\":\"some value\"}', NOW(), NOW() );
 
 UNLOCK TABLES;
 
