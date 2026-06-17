@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>JSONAir Admin — Configurations</title>
+<style>
+* { box-sizing: border-box; }
+body { font-family: monospace; margin: 0; padding: 0; background: #f5f5f5; }
+nav { background: #222; color: #eee; padding: 10px 20px; display: flex; align-items: center; gap: 20px; }
+nav strong { color: #fff; }
+nav a { color: #ccc; text-decoration: none; font-size: 0.9em; }
+nav a:hover { color: #fff; }
+.content { padding: 20px; }
+h2 { font-size: 1.1em; margin: 0 0 14px 0; }
+.search { margin-bottom: 14px; }
+.search input[type=text] { padding: 5px 8px; font-family: monospace; border: 1px solid #aaa; width: 160px; }
+.search button, .btn { padding: 5px 12px; font-family: monospace; cursor: pointer; border: 1px solid #aaa; background: #fff; text-decoration: none; color: #000; font-size: 0.9em; }
+.btn-new { background: #2a5; color: #fff; border-color: #2a5; }
+.btn-del { background: #c33; color: #fff; border-color: #c33; font-size: 0.8em; padding: 3px 8px; }
+table { border-collapse: collapse; width: 100%; background: #fff; border: 1px solid #ccc; }
+th, td { border: 1px solid #ddd; padding: 6px 10px; text-align: left; font-size: 0.9em; }
+th { background: #eee; }
+tr:hover { background: #f9f9f9; }
+.success { color: #060; background: #e6ffe6; padding: 8px 12px; border: 1px solid #0a0; margin-bottom: 12px; }
+.error { color: #c00; background: #ffe6e6; padding: 8px 12px; border: 1px solid #c00; margin-bottom: 12px; }
+.uuid { font-size: 0.8em; color: #555; }
+</style>
+</head>
+<body>
+<nav>
+  <strong>JSONAir Admin</strong>
+  <a href="/configs">Configurations</a>
+  <a href="/logout">Logout</a>
+</nav>
+<div class="content">
+  <h2>Configurations</h2>
+  {{if .Message}}<div class="success">{{.Message}}</div>{{end}}
+  {{if .Error}}<div class="error">{{.Error}}</div>{{end}}
+
+  <div class="search">
+    <form method="GET" action="/configs" style="display:inline-flex; gap:8px; align-items:center; flex-wrap:wrap;">
+      <span>Type:</span>
+      <input type="text" name="type" value="{{.TypeFilter}}" placeholder="filter...">
+      <span>Name:</span>
+      <input type="text" name="name" value="{{.NameFilter}}" placeholder="filter...">
+      <button type="submit">Search</button>
+      <a href="/configs" class="btn">Clear</a>
+    </form>
+  </div>
+
+  <p><a href="/configs/new" class="btn btn-new">+ New Configuration</a></p>
+
+  {{if .Configs}}
+  <table>
+    <tr>
+      <th>ID</th>
+      <th>Key UUID</th>
+      <th>Type</th>
+      <th>Name</th>
+      <th>Reload</th>
+      <th>Debug</th>
+      <th>Updated</th>
+      <th>Actions</th>
+    </tr>
+    {{range .Configs}}
+    <tr>
+      <td>{{.ID}}</td>
+      <td class="uuid">{{.UUID}}</td>
+      <td>{{.Type}}</td>
+      <td>{{.Name}}</td>
+      <td>{{.Reload}}</td>
+      <td>{{.Debug}}</td>
+      <td>{{.Updated}}</td>
+      <td style="white-space:nowrap;">
+        <a href="/configs/{{.ID}}/edit" class="btn">Edit</a>
+        <form method="POST" action="/configs/{{.ID}}/delete" style="display:inline;"
+              onsubmit="return confirm('Delete this configuration?');">
+          <button type="submit" class="btn btn-del">Delete</button>
+        </form>
+      </td>
+    </tr>
+    {{end}}
+  </table>
+  {{else}}
+  <p>No configurations found.</p>
+  {{end}}
+</div>
+</body>
+</html>

@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>JSONAir Admin — New Configuration</title>
+<style>
+* { box-sizing: border-box; }
+body { font-family: monospace; margin: 0; padding: 0; background: #f5f5f5; }
+nav { background: #222; color: #eee; padding: 10px 20px; display: flex; align-items: center; gap: 20px; }
+nav strong { color: #fff; }
+nav a { color: #ccc; text-decoration: none; font-size: 0.9em; }
+nav a:hover { color: #fff; }
+.content { padding: 20px; max-width: 900px; }
+h2 { font-size: 1.1em; margin: 0 0 16px 0; }
+.form-row { margin-top: 14px; }
+label { display: block; font-size: 0.85em; font-weight: bold; margin-bottom: 4px; }
+input[type=text], select { width: 100%; max-width: 500px; padding: 6px 8px; font-family: monospace; border: 1px solid #aaa; }
+textarea { width: 100%; height: 420px; padding: 8px; font-family: monospace; font-size: 0.85em; border: 1px solid #aaa; resize: vertical; }
+.actions { margin-top: 16px; display: flex; gap: 10px; align-items: center; }
+button[type=submit] { padding: 8px 22px; font-family: monospace; cursor: pointer; background: #2a5; color: #fff; border: none; }
+a.btn { padding: 8px 16px; font-family: monospace; border: 1px solid #aaa; text-decoration: none; color: #000; background: #fff; font-size: 0.9em; }
+.error { color: #c00; background: #ffe6e6; padding: 8px 12px; border: 1px solid #c00; margin-bottom: 14px; }
+</style>
+</head>
+<body>
+<nav>
+  <strong>JSONAir Admin</strong>
+  <a href="/configs">Configurations</a>
+  <a href="/logout">Logout</a>
+</nav>
+<div class="content">
+  <h2>New Configuration</h2>
+
+  {{if .Error}}<div class="error">{{.Error}}</div>{{end}}
+
+  <form method="POST" action="/configs/new">
+
+    <div class="form-row">
+      <label>Key (UUID)</label>
+      <select name="uuid">
+        {{range .Keys}}
+        <option value="{{.UUID}}">{{.Name}} — {{.UUID}}</option>
+        {{end}}
+      </select>
+    </div>
+
+    <div class="form-row">
+      <label>Type</label>
+      <input type="text" name="type" required placeholder="e.g. suricata, nginx">
+    </div>
+
+    <div class="form-row">
+      <label>Name</label>
+      <input type="text" name="name" required placeholder="e.g. prod.yaml">
+    </div>
+
+    <div class="form-row">
+      <label>Reload</label>
+      <input type="text" name="reload" placeholder="reload key or command">
+    </div>
+
+    <div class="form-row">
+      <label>Debug</label>
+      <input type="text" name="debug" placeholder="e.g. INFO, DEBUG">
+    </div>
+
+    <div class="form-row">
+      <label>Configuration Data (raw — will be base64-encoded and encrypted on save)</label>
+      <textarea name="config_data" placeholder="Paste your configuration here..."></textarea>
+    </div>
+
+    <div class="actions">
+      <button type="submit">Create</button>
+      <a href="/configs" class="btn">Cancel</a>
+    </div>
+
+  </form>
+</div>
+</body>
+</html>
