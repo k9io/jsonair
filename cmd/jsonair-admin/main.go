@@ -12,9 +12,16 @@
 package main
 
 import (
+	"context"
+	"crypto/tls"
 	"embed"
 	"html/template"
+	"net"
 	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -41,6 +48,10 @@ func main() {
 	router.Use(func(c *gin.Context) {
 		c.Header("X-Frame-Options", "DENY")
 		c.Header("X-Content-Type-Options", "nosniff")
+		c.Header("X-XSS-Protection", "1; mode=block")
+		if Cfg.HTTPTLS {
+			c.Header("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+		}
 		c.Next()
 	})
 
@@ -65,7 +76,80 @@ func main() {
 		auth.POST("/configs/:id/delete", deleteConfig)
 	}
 
-	if err := router.Run(Cfg.HTTPListen); err != nil {
-		fatalf("server error: %v", err)
+	server := &http.Server{
+		Handler:           router,
+		ReadTimeout:       10 * time.Second,
+		WriteTimeout:      10 * time.Second,
+		IdleTimeout:       60 * time.Second,
+		ReadHeaderTimeout: 5 * time.Second,
+	}
+
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
+	defer stop()
+
+	if Cfg.HTTPTLS {
+		cert, err := tls.LoadX509KeyPair(Cfg.HTTPCert, Cfg.HTTPKey)
+		if err != nil {
+			fatalf("failed to load TLS certificates: %v", err)
+		}
+
+		tlsConfig := &tls.Config{
+			Certificates: []tls.Certificate{cert},
+			MinVersion:   tls.VersionTLS12,
+		}
+
+		rawListener, err := net.Listen("tcp", Cfg.HTTPListen)
+		if err != nil {
+			fatalf("failed to bind to '%s': %v", Cfg.HTTPListen, err)
+		}
+
+		tlsListener := tls.NewListener(rawListener, tlsConfig)
+
+		serveErr := make(chan error, 1)
+		go func() {
+			if err := server.Serve(tlsListener); err != nil && err != http.ErrServerClosed {
+				serveErr <- err
+			}
+			close(serveErr)
+		}()
+
+		println("INFO: jsonair-admin listening on", Cfg.HTTPListen, "(TLS)")
+
+		select {
+		case err := <-serveErr:
+			fatalf("server error: %v", err)
+		case <-ctx.Done():
+			shutdownCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			defer cancel()
+			_ = server.Shutdown(shutdownCtx)
+			Cfg.DB.Close()
+			os.Exit(0)
+		}
+	} else {
+		ln, err := net.Listen("tcp", Cfg.HTTPListen)
+		if err != nil {
+			fatalf("failed to bind to '%s': %v", Cfg.HTTPListen, err)
+		}
+
+		serveErr := make(chan error, 1)
+		go func() {
+			if err := server.Serve(ln); err != nil && err != http.ErrServerClosed {
+				serveErr <- err
+			}
+			close(serveErr)
+		}()
+
+		println("INFO: jsonair-admin listening on", Cfg.HTTPListen)
+
+		select {
+		case err := <-serveErr:
+			fatalf("server error: %v", err)
+		case <-ctx.Done():
+			shutdownCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			defer cancel()
+			_ = server.Shutdown(shutdownCtx)
+			Cfg.DB.Close()
+			os.Exit(0)
+		}
 	}
 }

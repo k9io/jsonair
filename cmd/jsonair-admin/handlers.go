@@ -62,7 +62,7 @@ func issueSession(c *gin.Context) {
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	signed, _ := token.SignedString(Cfg.SessionSecret)
-	c.SetCookie(sessionCookie, signed, int(sessionTTL.Seconds()), "/", "", false, true)
+	c.SetCookie(sessionCookie, signed, int(sessionTTL.Seconds()), "/", "", Cfg.HTTPTLS, true)
 }
 
 // decryptConfigData decrypts an encrypted config_data value and returns the raw
@@ -113,7 +113,7 @@ func postLogin(c *gin.Context) {
 }
 
 func getLogout(c *gin.Context) {
-	c.SetCookie(sessionCookie, "", -1, "/", "", false, true)
+	c.SetCookie(sessionCookie, "", -1, "/", "", Cfg.HTTPTLS, true)
 	c.Redirect(http.StatusFound, "/login")
 }
 

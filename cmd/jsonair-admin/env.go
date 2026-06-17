@@ -38,6 +38,9 @@ type adminConfig struct {
 	MySQLTLSSkipVerify bool
 
 	HTTPListen string
+	HTTPTLS    bool
+	HTTPCert   string
+	HTTPKey    string
 }
 
 var Cfg adminConfig
@@ -67,6 +70,19 @@ func loadEnv() {
 	Cfg.HTTPListen = os.Getenv("HTTP_LISTEN")
 	if Cfg.HTTPListen == "" {
 		Cfg.HTTPListen = ":8080"
+	}
+
+	Cfg.HTTPTLS = os.Getenv("HTTP_TLS") == "true"
+	Cfg.HTTPCert = os.Getenv("HTTP_CERT")
+	Cfg.HTTPKey = os.Getenv("HTTP_KEY")
+
+	if Cfg.HTTPTLS {
+		if Cfg.HTTPCert == "" {
+			fatalf("HTTP_CERT environment variable is not set")
+		}
+		if Cfg.HTTPKey == "" {
+			fatalf("HTTP_KEY environment variable is not set")
+		}
 	}
 }
 
