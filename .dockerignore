@@ -1,0 +1,6 @@
+.git/
+bin/
+*.env
+*.key
+*.pptx
+*.py
