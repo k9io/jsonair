@@ -76,6 +76,7 @@ func main() {
 		auth.GET("/configs/:id/edit", showEditConfig)
 		auth.POST("/configs/:id/edit", saveEditConfig)
 		auth.POST("/configs/:id/delete", deleteConfig)
+		auth.POST("/validate", validateConfig)
 	}
 
 	server := &http.Server{

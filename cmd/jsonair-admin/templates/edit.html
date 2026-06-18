@@ -21,6 +21,12 @@ button[type=submit] { padding: 8px 22px; font-family: monospace; cursor: pointer
 a.btn { padding: 8px 16px; font-family: monospace; border: 1px solid #aaa; text-decoration: none; color: #000; background: #fff; font-size: 0.9em; }
 .error { color: #c00; background: #ffe6e6; padding: 8px 12px; border: 1px solid #c00; margin-bottom: 14px; }
 .meta { font-size: 0.8em; color: #666; margin-bottom: 16px; }
+.verify-bar { margin-top: 8px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.btn-verify { padding: 5px 14px; font-family: monospace; font-size: 0.85em; cursor: pointer; border: 1px solid #888; background: #f0f0f0; }
+.btn-verify:hover { background: #e0e0e0; }
+#verify-status { font-size: 0.85em; padding: 4px 10px; }
+#verify-status.ok  { color: #060; background: #e6ffe6; border: 1px solid #0a0; }
+#verify-status.err { color: #c00; background: #ffe6e6; border: 1px solid #c00; }
 </style>
 </head>
 <body>
@@ -68,7 +74,13 @@ a.btn { padding: 8px 16px; font-family: monospace; border: 1px solid #aaa; text-
 
     <div class="form-row">
       <label>Configuration Data (raw — will be base64-encoded and encrypted on save)</label>
-      <textarea name="config_data">{{.RawConfig}}</textarea>
+      <textarea name="config_data" id="config_data">{{.RawConfig}}</textarea>
+      <div class="verify-bar">
+        <button type="button" class="btn-verify" onclick="verify('json')">Verify JSON</button>
+        <button type="button" class="btn-verify" onclick="verify('xml')">Verify XML</button>
+        <button type="button" class="btn-verify" onclick="verify('yaml')">Verify YAML</button>
+        <span id="verify-status"></span>
+      </div>
     </div>
 
     <div class="actions">
@@ -78,5 +90,41 @@ a.btn { padding: 8px 16px; font-family: monospace; border: 1px solid #aaa; text-
 
   </form>
 </div>
+<script>
+function verify(format) {
+  var status = document.getElementById('verify-status');
+  var data   = document.getElementById('config_data').value;
+  status.textContent = 'Checking…';
+  status.className   = '';
+
+  var body = new FormData();
+  body.append('format', format);
+  body.append('data', data);
+
+  fetch('/validate', { method: 'POST', body: body, credentials: 'same-origin' })
+    .then(function(r) {
+      if (r.status === 401 || r.redirected) {
+        status.textContent = 'Session expired — please refresh and log in again.';
+        status.className = 'err';
+        return null;
+      }
+      return r.json();
+    })
+    .then(function(result) {
+      if (!result) return;
+      if (result.valid) {
+        status.textContent = format.toUpperCase() + ': valid ✓';
+        status.className = 'ok';
+      } else {
+        status.textContent = format.toUpperCase() + ' error: ' + result.error;
+        status.className = 'err';
+      }
+    })
+    .catch(function(e) {
+      status.textContent = 'Request failed: ' + e;
+      status.className = 'err';
+    });
+}
+</script>
 </body>
 </html>
