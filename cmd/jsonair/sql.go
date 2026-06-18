@@ -29,8 +29,6 @@ import (
 
 func sqlConnect() {
 
-	var err error
-
 	cfg := mysql.Config{
 		User:                 Env.MySQLUser,
 		Passwd:               Env.MySQLPass,
@@ -49,21 +47,21 @@ func sqlConnect() {
 			InsecureSkipVerify: Env.MySQLTLSSkipVerify,
 		}
 
-	} else {
-
-		/* Disable TLS */
-
-		cfg.TLSConfig = ""
-		cfg.TLS = nil
-
 	}
 
-	Env.DB, err = sql.Open("mysql", cfg.FormatDSN())
+	/* NewConnector uses the Config struct directly, so cfg.TLS is honoured.
+	   sql.Open("mysql", cfg.FormatDSN()) does not work for custom TLS configs
+	   because FormatDSN only serialises cfg.TLSConfig (the string name), not
+	   cfg.TLS (the *tls.Config), so TLS would be silently skipped. */
+
+	connector, err := mysql.NewConnector(&cfg)
 
 	if err != nil {
-		l.Logger(l.ERROR, "Cannot connect to database. %s\n", err.Error())
+		l.Logger(l.ERROR, "Cannot create database connector: %s\n", err.Error())
 		os.Exit(1)
 	}
+
+	Env.DB = sql.OpenDB(connector)
 
 	if err = Env.DB.Ping(); err != nil {
 		l.Logger(l.ERROR, "Database unreachable: %s\n", err.Error())

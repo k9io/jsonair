@@ -56,11 +56,15 @@ func sqlConnect() {
 		}
 	}
 
-	var err error
-	Cfg.DB, err = sql.Open("mysql", cfg.FormatDSN())
+	// NewConnector uses the Config struct directly, so cfg.TLS is honoured.
+	// sql.Open("mysql", cfg.FormatDSN()) does not work for custom TLS configs
+	// because FormatDSN only serialises cfg.TLSConfig (the string name), not
+	// cfg.TLS (the *tls.Config), so TLS would be silently skipped.
+	connector, err := mysql.NewConnector(&cfg)
 	if err != nil {
-		fatalf("cannot open database: %v", err)
+		fatalf("cannot create database connector: %v", err)
 	}
+	Cfg.DB = sql.OpenDB(connector)
 	if err = Cfg.DB.Ping(); err != nil {
 		fatalf("database unreachable: %v", err)
 	}
