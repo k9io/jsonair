@@ -15,6 +15,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"encoding/xml"
+	"fmt"
 	"io"
 	"net/http"
 
@@ -41,9 +42,13 @@ func validateConfig(c *gin.Context) {
 		parseErr = json.Unmarshal(data, &v)
 
 	case "xml":
+		// Walk all tokens to catch syntax errors, and require at least one
+		// start element — Go's decoder accepts bare text without elements,
+		// which is not a valid XML document.
 		decoder := xml.NewDecoder(bytes.NewReader(data))
+		hasElement := false
 		for {
-			_, err := decoder.Token()
+			tok, err := decoder.Token()
 			if err == io.EOF {
 				break
 			}
@@ -51,6 +56,12 @@ func validateConfig(c *gin.Context) {
 				parseErr = err
 				break
 			}
+			if _, ok := tok.(xml.StartElement); ok {
+				hasElement = true
+			}
+		}
+		if parseErr == nil && !hasElement {
+			parseErr = fmt.Errorf("not valid XML: no root element found")
 		}
 
 	case "yaml":
