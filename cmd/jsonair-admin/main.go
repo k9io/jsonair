@@ -58,6 +58,8 @@ func main() {
 	tmpl := template.Must(template.New("").ParseFS(templateFS, "templates/*.html"))
 	router.SetHTMLTemplate(tmpl)
 
+	router.GET("/health", healthCheck)
+
 	router.GET("/", func(c *gin.Context) {
 		c.Redirect(http.StatusFound, "/configs")
 	})

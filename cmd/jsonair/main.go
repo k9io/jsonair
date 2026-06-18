@@ -85,6 +85,8 @@ func main() {
 		c.Next()
 	})
 
+	router.GET("/health", healthCheck)
+
 	router.POST("/api/v1/jsonair/auth/token", rateLimitMiddleware(), authToken)
 
 	configGroup := router.Group("/api/v1/jsonair")
