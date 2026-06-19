@@ -51,6 +51,7 @@ func Logger(log_type int, format string, args ...interface{}) {
 	var __FILE__ string /* Use old school __LINE__ and __FILE__ variables */
 
 	var logWriter *syslog.Writer
+	var useSyslog bool = true
 
 	Message := fmt.Sprintf(format, args...)
 
@@ -79,7 +80,10 @@ func Logger(log_type int, format string, args ...interface{}) {
 	}
 
 	if err != nil {
-		log.Fatalf("[E] Unable to open syslog channel: %s\n", err.Error())
+
+		fmt.Printf("Syslog is not available.  Using stdout/stderr instead.\n")
+		useSyslog = false
+
 	}
 
 	switch log_type {
@@ -88,37 +92,49 @@ func Logger(log_type int, format string, args ...interface{}) {
 
 		fmt.Printf("%s    :%s:%s:%s:\t%s\n", white("Info"), cyan(self), green(__FILE__), green(__LINE__), white(Message))
 
-		logWriter.Info(Message)
+		if useSyslog {
+			logWriter.Info(Message)
+		}
 
 	case WARN:
 
 		fmt.Printf("%s :%s:%s:%s:\t%s\n", yellow("Warning"), cyan(self), green(__FILE__), green(__LINE__), yellow(Message))
 
-		logWriter.Warning(Message)
+		if useSyslog {
+			logWriter.Warning(Message)
+		}
 
 	case NOTICE:
 
 		fmt.Printf("%s  :%s:%s:%s:\t%s\n", cyan("Notice"), cyan(self), green(__FILE__), green(__LINE__), cyan(Message))
 
-		logWriter.Notice(Message)
+		if useSyslog {
+			logWriter.Notice(Message)
+		}
 
 	case ERROR:
 
 		fmt.Printf("%s   :%s:%s:%s:\t%s\n", red("Error"), cyan(self), green(__FILE__), green(__LINE__), red(Message))
 
-		logWriter.Err(Message)
+		if useSyslog {
+			logWriter.Err(Message)
+		}
 
 	case DEBUG:
 
 		fmt.Printf("%s   :%s:%s:%s:\t%s\n", blue("Debug"), cyan(self), green(__FILE__), green(__LINE__), blue(Message))
 
-		logWriter.Debug(Message)
+		if useSyslog {
+			logWriter.Debug(Message)
+		}
 
 	case BANNER:
 
 		fmt.Printf("%s    :%s:%s:%s:\t%s\n", white("Info"), cyan(self), green(__FILE__), green(__LINE__), magenta(Message))
 
-		logWriter.Info(Message)
+		if useSyslog {
+			logWriter.Info(Message)
+		}
 
 	default:
 
