@@ -12,7 +12,7 @@ CREATE TABLE `keys` (
   `created` timestamp NOT NULL,
   `last_login` timestamp NOT NULL,
   PRIMARY KEY (`id`,`uuid`),
-  UNIQUE KEY `idx_key` (`key`)
+  UNIQUE KEY `idx_token` (`token`)
 ) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
