@@ -8,7 +8,7 @@ CREATE TABLE `keys` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `uuid` varchar(36) NOT NULL,
   `name` varchar(64) NOT NULL,
-  `key` varchar(255) COLLATE utf8mb4_bin NOT NULL,
+  `token` varchar(255) COLLATE utf8mb4_bin NOT NULL,
   `created` timestamp NOT NULL,
   `last_login` timestamp NOT NULL,
   PRIMARY KEY (`id`,`uuid`),
