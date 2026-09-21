@@ -94,3 +94,25 @@ func TestGetConfigName_SanitizesInput(t *testing.T) {
 		t.Errorf("name contains unsafe characters: %q", name)
 	}
 }
+
+// --- mysqlAddr ---
+
+func TestMysqlAddr(t *testing.T) {
+	tests := []struct {
+		host string
+		port int
+		want string
+	}{
+		{"127.0.0.1", 3306, "127.0.0.1:3306"},
+		{"db.internal", 3307, "db.internal:3307"},
+		{"::1", 3306, "[::1]:3306"},
+		// A port already in MYSQL_HOST (the old workaround for MYSQL_PORT being ignored) wins.
+		{"db.internal:3307", 3306, "db.internal:3307"},
+		{"[::1]:3307", 3306, "[::1]:3307"},
+	}
+	for _, tt := range tests {
+		if got := mysqlAddr(tt.host, tt.port); got != tt.want {
+			t.Errorf("mysqlAddr(%q, %d) = %q, want %q", tt.host, tt.port, got, tt.want)
+		}
+	}
+}

@@ -20,6 +20,10 @@ export MYSQL_PORT=3306
 export MYSQL_DATABASE="jsonair"
 export MYSQL_TLS=false
 
+# Optional: send logs to a remote syslog server ("local" is the default).
+#export SYSLOG_HOST="10.0.0.5:514"
+#export SYSLOG_PROTO="udp"
+
 export HTTP_TLS=false
 export HTTP_LISTEN=":9191"
 export HTTP_CERT="/etc/letsencrypt/live/YOURSITE/fullchain.pem"

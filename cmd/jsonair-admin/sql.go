@@ -15,7 +15,8 @@ import (
 	"context"
 	"crypto/tls"
 	"database/sql"
-	"fmt"
+	"net"
+	"strconv"
 	"time"
 
 	"github.com/go-sql-driver/mysql"
@@ -44,7 +45,7 @@ func sqlConnect() {
 		User:                 Cfg.MySQLUser,
 		Passwd:               Cfg.MySQLPass,
 		Net:                  "tcp",
-		Addr:                 fmt.Sprintf("%s:%d", Cfg.MySQLHost, Cfg.MySQLPort),
+		Addr:                 net.JoinHostPort(Cfg.MySQLHost, strconv.Itoa(Cfg.MySQLPort)),
 		DBName:               Cfg.MySQLDB,
 		AllowNativePasswords: true,
 	}

@@ -19,7 +19,9 @@ import (
 	"database/sql"
 	"encoding/hex"
 	"fmt"
+	"net"
 	"os"
+	"strconv"
 	"time"
 
 	l "github.com/k9io/jsonair/internal/logger"
@@ -27,13 +29,31 @@ import (
 	"github.com/go-sql-driver/mysql"
 )
 
+/* mysqlAddr builds the "host:port" the MySQL driver connects to.  MYSQL_PORT was
+   previously ignored, so some deployments work around that by putting the port
+   in MYSQL_HOST ("db.internal:3307").  If MYSQL_HOST already carries a port it
+   is used as-is, so those deployments keep working. */
+
+func mysqlAddr(host string, port int) string {
+
+	if _, hostPort, err := net.SplitHostPort(host); err == nil {
+
+		l.Logger(l.WARN, "MYSQL_HOST already contains a port ('%s'); using it and ignoring MYSQL_PORT (%d).", hostPort, port)
+		return host
+
+	}
+
+	return net.JoinHostPort(host, strconv.Itoa(port))
+
+}
+
 func sqlConnect() {
 
 	cfg := mysql.Config{
 		User:                 Env.MySQLUser,
 		Passwd:               Env.MySQLPass,
 		Net:                  "tcp",
-		Addr:                 Env.MySQLHost,
+		Addr:                 mysqlAddr(Env.MySQLHost, Env.MySQLPort),
 		DBName:               Env.MySQLDB,
 		AllowNativePasswords: true,
 	}

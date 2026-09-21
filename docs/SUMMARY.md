@@ -10,6 +10,7 @@
   * [2.6 Configuring and Running the JSONAir Agent](2.6-agent-configuration.md)
   * [2.7 Encrypting Configuration Data](2.7-encrypting-config-data.md)
   * [2.8 Admin Web Interface](2.8-admin-web-interface.md)
+  * [2.9 The Write API](2.9-write-api.md)
 * [3. Using the API](3-using-the-api.md)
   * [3.1 Authentication](3.1-authentication.md)
   * [3.2 Making API Requests](3.2-make-api-requests.md)

@@ -121,6 +121,15 @@ func loadEnv() {
 		l.Logger(l.WARN, "MYSQL_TLS_SKIP_VERIFY is enabled — certificate validation is disabled.")
 	}
 
+	/* -- Syslog (optional) -- */
+
+	Env.SyslogHost, Env.SyslogProto, err = l.ParseSyslogEnv(os.Getenv("SYSLOG_HOST"), os.Getenv("SYSLOG_PROTO"))
+
+	if err != nil {
+		l.Logger(l.ERROR, "%v", err)
+		os.Exit(1)
+	}
+
 	/* -- HTTP -- */
 
 	tmp = os.Getenv("HTTP_TLS")

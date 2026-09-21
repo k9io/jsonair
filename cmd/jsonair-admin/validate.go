@@ -12,15 +12,12 @@
 package main
 
 import (
-	"bytes"
-	"encoding/json"
-	"encoding/xml"
-	"fmt"
-	"io"
+	"errors"
 	"net/http"
 
+	"github.com/k9io/jsonair/internal/configdata"
+
 	"github.com/gin-gonic/gin"
-	"github.com/goccy/go-yaml"
 )
 
 func validateConfig(c *gin.Context) {
@@ -33,49 +30,15 @@ func validateConfig(c *gin.Context) {
 		return
 	}
 
-	var parseErr error
+	err := configdata.Validate(format, data)
 
-	switch format {
-
-	case "json":
-		var v any
-		parseErr = json.Unmarshal(data, &v)
-
-	case "xml":
-		// Walk all tokens to catch syntax errors, and require at least one
-		// start element — Go's decoder accepts bare text without elements,
-		// which is not a valid XML document.
-		decoder := xml.NewDecoder(bytes.NewReader(data))
-		hasElement := false
-		for {
-			tok, err := decoder.Token()
-			if err == io.EOF {
-				break
-			}
-			if err != nil {
-				parseErr = err
-				break
-			}
-			if _, ok := tok.(xml.StartElement); ok {
-				hasElement = true
-			}
-		}
-		if parseErr == nil && !hasElement {
-			parseErr = fmt.Errorf("not valid XML: no root element found")
-		}
-
-	case "yaml":
-		var v any
-		parseErr = yaml.Unmarshal(data, &v)
-
-	default:
-		c.JSON(http.StatusBadRequest, gin.H{"valid": false, "error": "unknown format — use json, xml, or yaml"})
+	if errors.Is(err, configdata.ErrUnknownFormat) {
+		c.JSON(http.StatusBadRequest, gin.H{"valid": false, "error": err.Error()})
 		return
-
 	}
 
-	if parseErr != nil {
-		c.JSON(http.StatusOK, gin.H{"valid": false, "error": parseErr.Error()})
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{"valid": false, "error": err.Error()})
 		return
 	}
 

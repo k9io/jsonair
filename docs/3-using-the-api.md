@@ -4,7 +4,9 @@ description: Overview of the JSONAir API.
 
 # 3. Using the API
 
-The JSONAir API is a simple, read-only HTTP API. Agents use it to retrieve configuration data. There are no write endpoints — JSONAir is intentionally uni-directional.
+The JSONAir API is a simple, read-only HTTP API. Agents use it to retrieve configuration data. There are no write endpoints on this API — it is intentionally uni-directional.
+
+Configurations are changed by separate programs: `jsonair-admin` (a web interface, [2.8](2.8-admin-web-interface.md)) and the optional, write-only `jsonair-write` API ([2.9](2.9-write-api.md)). The write API has its own base path (`/api/v1/jsonair-write/`), its own PATs and its own tokens, and a read PAT or JWT is not accepted by it (or the other way around).
 
 ---
 

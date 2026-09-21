@@ -16,8 +16,18 @@ While many cloud providers offer proprietary configuration storage, these method
 
 JSONAir is agnostic to “how” configuration data is stored. To JSONAir, configuration data is just “data.” It might be legacy flat ASCII files, YAML, JSON, etc. JSONAir doesn’t care. However, this means that your software still needs to “validate” the configuration data.
 
-While there are similar projects to JSONAir, we found them to be overly complicated for most of our use cases. The concept behind JSONAir is for it to remain as simple as possible. It is a configuration retrieval system, and it does not intend to validate, update, or modify configuration data. This makes the JSONAir API incredibly simple and uni-directional (read-only).
+While there are similar projects to JSONAir, we found them to be overly complicated for most of our use cases. The concept behind JSONAir is for it to remain as simple as possible. The JSONAir API (`jsonair`) is a configuration retrieval system, and it does not validate, update, or modify configuration data. This makes it incredibly simple and uni-directional (read-only).
+
+Changing configuration data is handled by separate programs, so the read API never needs write access to your data:
+
+| Program | Purpose |
+|---------|---------|
+| `jsonair` | The read-only API. Agents and applications retrieve configurations from it. |
+| `jsonair-agent` | Polls `jsonair`, writes the configuration to a local file, and runs a reload command when it changes. |
+| `jsonair-admin` | A browser-based interface for people to create, edit and delete configurations. |
+| `jsonair-write` | An optional, **write-only** API for other services to create, update and delete configurations. It has no endpoint that returns configuration data, and it is meant to run on a restricted/internal network. |
+| `jsonair-encrypt` | A command-line tool to encrypt (and decrypt) configuration data for manual database inserts. |
 
 JSONAir is written in a memory-safe language (Golang) and can be used in containers and clusters itself for high availability. It is meant to be memory and CPU efficient.
 
-Documenation can be found at: https://docs.k9.io/key9-identity/jsonair
+Documentation can be found at: https://docs.k9.io/key9-identity/jsonair

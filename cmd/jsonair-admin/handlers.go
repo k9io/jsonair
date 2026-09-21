@@ -19,6 +19,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/k9io/jsonair/internal/configdata"
 	cry "github.com/k9io/jsonair/internal/crypto"
 
 	"github.com/gin-gonic/gin"
@@ -89,8 +90,7 @@ func decryptConfigData(encryptedData string) (string, error) {
 
 // encryptConfigData base64-encodes the raw config text and encrypts it for storage.
 func encryptConfigData(rawConfig string) (string, error) {
-	b64 := base64.StdEncoding.EncodeToString([]byte(rawConfig))
-	return cry.Encrypt([]byte(b64), Cfg.ConfigEncryptKey)
+	return configdata.Encode(rawConfig, Cfg.ConfigEncryptKey)
 }
 
 // --- Login / Logout ---
