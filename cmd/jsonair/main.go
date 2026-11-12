@@ -25,6 +25,7 @@ import (
 
 	l "github.com/k9io/jsonair/internal/logger"
 	"github.com/k9io/jsonair/internal/droppriv"
+	"github.com/k9io/jsonair/internal/ratelimit"
 
 	"github.com/gin-gonic/gin"
 )
@@ -57,6 +58,9 @@ func main() {
 
 	}
 
+	authLimiter := ratelimit.New(Env.RateLimit)
+	l.Logger(l.NOTICE, "Auth endpoint rate limit: %s", Env.RateLimit)
+
 	router := gin.New()
 
 	router.SetTrustedProxies(nil)
@@ -87,7 +91,7 @@ func main() {
 
 	router.GET("/health", healthCheck)
 
-	router.POST("/api/v1/jsonair/auth/token", rateLimitMiddleware(), authToken)
+	router.POST("/api/v1/jsonair/auth/token", authLimiter.Middleware(), authToken)
 
 	configGroup := router.Group("/api/v1/jsonair")
 
@@ -111,7 +115,7 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
 	defer stop()
 
-	StartRateLimiterCleanup(ctx)
+	authLimiter.StartCleanup(ctx)
 
 	if Env.HTTPTLS {
 

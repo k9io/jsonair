@@ -18,6 +18,7 @@ import (
 
 	cry "github.com/k9io/jsonair/internal/crypto"
 	l "github.com/k9io/jsonair/internal/logger"
+	"github.com/k9io/jsonair/internal/ratelimit"
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/joho/godotenv"
@@ -50,6 +51,8 @@ type environmentConfig struct {
 	JWTTokenExpire  int
 	TokenHMACSecret []byte
 	ConfigEncryptKey []byte
+
+	RateLimit ratelimit.Config
 }
 
 var Env environmentConfig
@@ -222,5 +225,18 @@ func loadEnv() {
 	}
 
 	Env.ConfigEncryptKey = cry.DeriveKey([]byte(tmp))
+
+	/* -- Rate limiting on the auth endpoint (optional) -- */
+
+	Env.RateLimit, err = ratelimit.ParseEnv(os.Getenv)
+
+	if err != nil {
+		l.Logger(l.ERROR, "%v", err)
+		os.Exit(1)
+	}
+
+	if !Env.RateLimit.Enabled {
+		l.Logger(l.WARN, "RATE_LIMIT_ENABLED=false — the auth endpoint is not rate limited.")
+	}
 
 }

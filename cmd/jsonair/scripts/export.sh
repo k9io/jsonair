@@ -39,6 +39,12 @@ export JWT_TOKEN_EXPIRE=15
 export TOKEN_HMAC_SECRET="REALLYLONGSTRING"	 # Generate with `openssl rand -hex 32`
 export CONFIG_ENCRYPT_SECRET="REALLYLONGSTRING"  # Generate with `openssl rand -hex 32`
 
+# Optional: rate limiting of the PAT -> JWT exchange (per client IP).
+#export RATE_LIMIT_ENABLED=true		# "false" disables rate limiting entirely.
+#export RATE_LIMIT_PER_MINUTE=5
+#export RATE_LIMIT_BURST=5
+#export RATE_LIMIT_EXEMPT="10.0.5.12,192.168.10.0/24"	# Trusted IPs/CIDRs that are never limited.
+
 # Execute jsonair. 
 
 ./jsonair
