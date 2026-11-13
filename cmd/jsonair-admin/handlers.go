@@ -12,7 +12,11 @@
 package main
 
 import (
+	"crypto/sha256"
+	"crypto/subtle"
+	"database/sql"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -46,10 +50,21 @@ func requireAuth() gin.HandlerFunc {
 		}, jwt.WithValidMethods([]string{"HS256"}))
 
 		if err != nil || !token.Valid {
-			c.Redirect(http.StatusFound, "/login")
+			// A cookie was present but is no longer valid: almost always an
+			// expired session, so say so on the login page.
+			setCookie(c, sessionCookie, "", -1)
+			c.Redirect(http.StatusFound, "/login?expired=1")
 			c.Abort()
 			return
 		}
+
+		if sub, err := token.Claims.GetSubject(); err == nil {
+			c.Set("user", sub)
+		}
+		if exp, err := token.Claims.GetExpirationTime(); err == nil && exp != nil {
+			c.Set("sessionExp", exp.Time)
+		}
+		c.Set("csrf", csrfToken(tok))
 
 		c.Next()
 	}
@@ -63,7 +78,7 @@ func issueSession(c *gin.Context) {
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	signed, _ := token.SignedString(Cfg.SessionSecret)
-	c.SetCookie(sessionCookie, signed, int(sessionTTL.Seconds()), "/", "", Cfg.HTTPTLS, true)
+	setCookie(c, sessionCookie, signed, int(sessionTTL.Seconds()))
 }
 
 // decryptConfigData decrypts an encrypted config_data value and returns the raw
@@ -95,16 +110,36 @@ func encryptConfigData(rawConfig string) (string, error) {
 
 // --- Login / Logout ---
 
+// credentialsMatch compares in constant time, so response timing reveals
+// nothing about the configured username or password. Hashing first makes the
+// inputs equal length, so their lengths do not leak either, and both checks
+// always run.
+func credentialsMatch(username, password string) bool {
+	eq := func(a, b string) int {
+		ha := sha256.Sum256([]byte(a))
+		hb := sha256.Sum256([]byte(b))
+		return subtle.ConstantTimeCompare(ha[:], hb[:])
+	}
+	return eq(username, Cfg.AdminUsername)&eq(password, Cfg.AdminPassword) == 1
+}
+
 func getLogin(c *gin.Context) {
-	c.HTML(http.StatusOK, "login.html", gin.H{"Error": ""})
+	render(c, http.StatusOK, "login.html", gin.H{
+		"Title":   "Sign in",
+		"Expired": c.Query("expired") == "1",
+	})
 }
 
 func postLogin(c *gin.Context) {
 	username := c.PostForm("username")
 	password := c.PostForm("password")
 
-	if username != Cfg.AdminUsername || password != Cfg.AdminPassword {
-		c.HTML(http.StatusUnauthorized, "login.html", gin.H{"Error": "Invalid username or password."})
+	if !credentialsMatch(username, password) {
+		render(c, http.StatusUnauthorized, "login.html", gin.H{
+			"Title":    "Sign in",
+			"Error":    "Invalid username or password.",
+			"Username": username,
+		})
 		return
 	}
 
@@ -112,162 +147,228 @@ func postLogin(c *gin.Context) {
 	c.Redirect(http.StatusFound, "/configs")
 }
 
-func getLogout(c *gin.Context) {
-	c.SetCookie(sessionCookie, "", -1, "/", "", Cfg.HTTPTLS, true)
+// postLogout is a POST (with a CSRF token) so other sites cannot sign you out.
+func postLogout(c *gin.Context) {
+	setCookie(c, sessionCookie, "", -1)
 	c.Redirect(http.StatusFound, "/login")
 }
 
 // --- Config List ---
 
 func listConfigs(c *gin.Context) {
-	typeFilter := c.Query("type")
-	nameFilter := c.Query("name")
-	msg := c.Query("msg")
+	typeFilter := strings.TrimSpace(c.Query("type"))
+	nameFilter := strings.TrimSpace(c.Query("name"))
+
+	data := gin.H{
+		"Title":      "Configurations",
+		"TypeFilter": typeFilter,
+		"NameFilter": nameFilter,
+		"Filtered":   typeFilter != "" || nameFilter != "",
+		"Flash":      takeFlash(c),
+		"Count":      0,
+		"KeyCount":   0,
+		"LoadError":  false,
+	}
 
 	configs, err := sqlListConfigs(typeFilter, nameFilter)
 	if err != nil {
-		c.HTML(http.StatusInternalServerError, "configs.html", gin.H{
-			"Configs":    nil,
-			"TypeFilter": typeFilter,
-			"NameFilter": nameFilter,
-			"Message":    "",
-			"Error":      err.Error(),
-		})
+		data["Flash"] = errorFlash("Could not load configurations: " + err.Error())
+		data["LoadError"] = true
+		render(c, http.StatusInternalServerError, "configs.html", data)
 		return
 	}
 
-	c.HTML(http.StatusOK, "configs.html", gin.H{
-		"Configs":    configs,
-		"TypeFilter": typeFilter,
-		"NameFilter": nameFilter,
-		"Message":    msg,
-		"Error":      "",
-	})
+	keys := map[string]struct{}{}
+	for _, cfg := range configs {
+		if cfg.UUID != "" {
+			keys[cfg.UUID] = struct{}{}
+		}
+	}
+
+	data["Configs"] = configs
+	data["Count"] = len(configs)
+	data["KeyCount"] = len(keys)
+	render(c, http.StatusOK, "configs.html", data)
+}
+
+// --- Shared form handling ---
+
+// configFromForm reads the posted configuration fields.
+func configFromForm(c *gin.Context) (configRow, string) {
+	return configRow{
+		UUID:   c.PostForm("uuid"),
+		Type:   strings.TrimSpace(c.PostForm("type")),
+		Name:   strings.TrimSpace(c.PostForm("name")),
+		Reload: c.PostForm("reload"),
+		Debug:  c.PostForm("debug"),
+	}, c.PostForm("config_data")
+}
+
+// formData builds the template data shared by the New and Edit pages.
+// original is the stored row (nil on the New page); shown holds the values to
+// display, which differ from original after a failed save.
+func formData(title string, original *configRow, shown configRow, raw string, keys []keyRow, fl *flash) gin.H {
+	known := shown.UUID == ""
+	keyName := ""
+	for _, k := range keys {
+		if k.UUID == shown.UUID {
+			known = true
+		}
+		if original != nil && k.UUID == original.UUID {
+			keyName = k.Name
+		}
+	}
+
+	return gin.H{
+		"Title":     title,
+		"IsEdit":    original != nil,
+		"Original":  original,
+		"Config":    shown,
+		"RawConfig": raw,
+		"Keys":      keys,
+		"KeyKnown":  known,
+		"KeyName":   keyName,
+		"Flash":     fl,
+	}
+}
+
+func validateConfigFields(cfg configRow) string {
+	switch {
+	case cfg.UUID == "":
+		return "Choose a key for this configuration."
+	case cfg.Type == "":
+		return "Type is required."
+	case cfg.Name == "":
+		return "Name is required."
+	}
+	return ""
 }
 
 // --- New Config ---
 
 func showNewConfig(c *gin.Context) {
 	keys, err := sqlListKeys()
+	var fl *flash
 	if err != nil {
-		c.HTML(http.StatusInternalServerError, "new.html", gin.H{
-			"Keys":  nil,
-			"Error": err.Error(),
-		})
-		return
+		fl = errorFlash("Could not load keys: " + err.Error())
 	}
-	c.HTML(http.StatusOK, "new.html", gin.H{
-		"Keys":  keys,
-		"Error": "",
-	})
+	render(c, http.StatusOK, "new.html", formData("New configuration", nil, configRow{}, "", keys, fl))
 }
 
 func createConfig(c *gin.Context) {
-	uuid := c.PostForm("uuid")
-	typ := c.PostForm("type")
-	name := c.PostForm("name")
-	reload := c.PostForm("reload")
-	dbg := c.PostForm("debug")
-	rawData := c.PostForm("config_data")
+	cfg, rawData := configFromForm(c)
+	keys, _ := sqlListKeys()
+
+	fail := func(status int, fl *flash) {
+		data := formData("New configuration", nil, cfg, rawData, keys, fl)
+		data["StartDirty"] = true
+		render(c, status, "new.html", data)
+	}
+
+	if msg := validateConfigFields(cfg); msg != "" {
+		fail(http.StatusBadRequest, errorFlash(msg))
+		return
+	}
 
 	encrypted, err := encryptConfigData(rawData)
 	if err != nil {
-		keys, _ := sqlListKeys()
-		c.HTML(http.StatusInternalServerError, "new.html", gin.H{
-			"Keys":  keys,
-			"Error": "Encryption failed: " + err.Error(),
-		})
+		fail(http.StatusInternalServerError, errorFlash("Encryption failed: "+err.Error()))
 		return
 	}
 
-	if err := sqlCreateConfig(uuid, typ, name, reload, dbg, encrypted); err != nil {
-		keys, _ := sqlListKeys()
-		c.HTML(http.StatusInternalServerError, "new.html", gin.H{
-			"Keys":  keys,
-			"Error": "Database error: " + err.Error(),
-		})
+	if err := sqlCreateConfig(cfg.UUID, cfg.Type, cfg.Name, cfg.Reload, cfg.Debug, encrypted); err != nil {
+		if isDuplicateEntry(err) {
+			fail(http.StatusConflict, duplicateFlash(cfg.UUID, cfg.Type, cfg.Name))
+			return
+		}
+		fail(http.StatusInternalServerError, errorFlash("Database error: "+err.Error()))
 		return
 	}
 
-	c.Redirect(http.StatusFound, "/configs?msg=Configuration+created+successfully.")
+	setFlash(c, "success", fmt.Sprintf("Created %s / %s.", cfg.Type, cfg.Name))
+	c.Redirect(http.StatusFound, "/configs")
 }
 
 // --- Edit Config ---
 
-func showEditConfig(c *gin.Context) {
+// loadConfigOr404 fetches a configuration by the :id route parameter, rendering
+// an error page and returning nil when it can't.
+func loadConfigOr404(c *gin.Context) *configRow {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		c.Redirect(http.StatusFound, "/configs")
-		return
+		renderError(c, http.StatusNotFound, "Configuration not found", "That configuration ID isn't valid.")
+		return nil
 	}
 
 	row, err := sqlGetConfigByID(id)
+	if errors.Is(err, sql.ErrNoRows) {
+		renderError(c, http.StatusNotFound, "Configuration not found", "It may have been deleted, or the link may be wrong.")
+		return nil
+	}
 	if err != nil {
-		c.HTML(http.StatusNotFound, "edit.html", gin.H{
-			"Config":    nil,
-			"RawConfig": "",
-			"Keys":      nil,
-			"Error":     "Configuration not found.",
-		})
+		renderError(c, http.StatusInternalServerError, "Could not load configuration", err.Error())
+		return nil
+	}
+	return row
+}
+
+func showEditConfig(c *gin.Context) {
+	row := loadConfigOr404(c)
+	if row == nil {
 		return
 	}
 
+	var fl *flash
 	rawConfig, decErr := decryptConfigData(row.ConfigData)
-	decryptWarning := ""
 	if decErr != nil {
-		decryptWarning = "Could not decrypt existing data: " + decErr.Error()
+		fl = errorFlash("Could not decrypt the stored data (" + decErr.Error() + "). Saving will replace it with what is in the editor.")
 	}
 
-	keys, _ := sqlListKeys()
+	keys, err := sqlListKeys()
+	if err != nil && fl == nil {
+		fl = errorFlash("Could not load keys: " + err.Error())
+	}
 
-	c.HTML(http.StatusOK, "edit.html", gin.H{
-		"Config":         row,
-		"RawConfig":      rawConfig,
-		"Keys":           keys,
-		"Error":          decryptWarning,
-	})
+	render(c, http.StatusOK, "edit.html", formData(row.Name, row, *row, rawConfig, keys, fl))
 }
 
 func saveEditConfig(c *gin.Context) {
-	id, err := strconv.Atoi(c.Param("id"))
-	if err != nil {
-		c.Redirect(http.StatusFound, "/configs")
+	row := loadConfigOr404(c)
+	if row == nil {
 		return
 	}
 
-	uuid := c.PostForm("uuid")
-	typ := c.PostForm("type")
-	name := c.PostForm("name")
-	reload := c.PostForm("reload")
-	dbg := c.PostForm("debug")
-	rawData := c.PostForm("config_data")
+	cfg, rawData := configFromForm(c)
+	keys, _ := sqlListKeys()
+
+	fail := func(status int, fl *flash) {
+		data := formData(row.Name, row, cfg, rawData, keys, fl)
+		data["StartDirty"] = true
+		render(c, status, "edit.html", data)
+	}
+
+	if msg := validateConfigFields(cfg); msg != "" {
+		fail(http.StatusBadRequest, errorFlash(msg))
+		return
+	}
 
 	encrypted, err := encryptConfigData(rawData)
 	if err != nil {
-		row, _ := sqlGetConfigByID(id)
-		keys, _ := sqlListKeys()
-		c.HTML(http.StatusInternalServerError, "edit.html", gin.H{
-			"Config":    row,
-			"RawConfig": rawData,
-			"Keys":      keys,
-			"Error":     "Encryption failed: " + err.Error(),
-		})
+		fail(http.StatusInternalServerError, errorFlash("Encryption failed: "+err.Error()))
 		return
 	}
 
-	if err := sqlUpdateConfig(id, uuid, typ, name, reload, dbg, encrypted); err != nil {
-		row, _ := sqlGetConfigByID(id)
-		keys, _ := sqlListKeys()
-		c.HTML(http.StatusInternalServerError, "edit.html", gin.H{
-			"Config":    row,
-			"RawConfig": rawData,
-			"Keys":      keys,
-			"Error":     "Database error: " + err.Error(),
-		})
+	if err := sqlUpdateConfig(row.ID, cfg.UUID, cfg.Type, cfg.Name, cfg.Reload, cfg.Debug, encrypted); err != nil {
+		if isDuplicateEntry(err) {
+			fail(http.StatusConflict, duplicateFlash(cfg.UUID, cfg.Type, cfg.Name))
+			return
+		}
+		fail(http.StatusInternalServerError, errorFlash("Database error: "+err.Error()))
 		return
 	}
 
-	c.Redirect(http.StatusFound, "/configs?msg=Configuration+saved+successfully.")
+	setFlash(c, "success", fmt.Sprintf("Saved %s / %s. Agents pick up the change on their next poll.", cfg.Type, cfg.Name))
+	c.Redirect(http.StatusFound, "/configs")
 }
 
 // --- Delete Config ---
@@ -279,10 +380,19 @@ func deleteConfig(c *gin.Context) {
 		return
 	}
 
-	if err := sqlDeleteConfig(id); err != nil {
-		c.Redirect(http.StatusFound, "/configs?msg=Delete+failed:+"+err.Error())
+	row, err := sqlGetConfigByID(id)
+	if err != nil {
+		setFlash(c, "error", "That configuration no longer exists.")
+		c.Redirect(http.StatusFound, "/configs")
 		return
 	}
 
-	c.Redirect(http.StatusFound, "/configs?msg=Configuration+deleted.")
+	if err := sqlDeleteConfig(id); err != nil {
+		setFlash(c, "error", "Delete failed: "+err.Error())
+		c.Redirect(http.StatusFound, "/configs")
+		return
+	}
+
+	setFlash(c, "success", fmt.Sprintf("Deleted %s / %s.", row.Type, row.Name))
+	c.Redirect(http.StatusFound, "/configs")
 }

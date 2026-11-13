@@ -1,0 +1,161 @@
+{{/*
+  Shared partials for every page. This file only defines templates;
+  it is never rendered on its own.
+*/}}
+
+{{define "head"}}<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+{{with .CSRFToken}}<meta name="csrf-token" content="{{.}}">
+{{end}}<title>{{.Title}} · JSONAir Admin</title>
+<link rel="icon" type="image/svg+xml" href="{{asset "favicon.svg"}}">
+<link rel="stylesheet" href="{{asset "app.css"}}">
+<script src="{{asset "app.js"}}" defer></script>
+</head>
+{{end}}
+
+{{define "nav"}}
+<header class="topbar">
+  <a class="brand" href="/configs">{{template "i-logo"}}<span>JSONAir <span class="brand-sub">Admin</span></span></a>
+  <nav class="nav-links" aria-label="Main">
+    <a href="/configs" aria-current="page">Configurations</a>
+  </nav>
+  <div class="session">
+    <span>Signed in as <strong>{{.User}}</strong><span data-session-remaining="{{.SessionRemaining}}"></span></span>
+    <form method="POST" action="/logout" class="logout-form">{{template "csrf" .}}<button type="submit" class="link-btn">Log out</button></form>
+  </div>
+</header>
+<div class="session-banner" id="session-banner" role="alert" hidden></div>
+{{end}}
+
+{{/* Hidden CSRF token field; include in every POST form. */}}
+{{define "csrf"}}<input type="hidden" name="csrf_token" value="{{.CSRFToken}}">{{end}}
+
+{{define "flash"}}
+{{with .Flash}}
+<div class="flash flash-{{.Kind}}" {{if eq .Kind "error"}}role="alert"{{else}}role="status"{{end}} data-flash>
+  {{if eq .Kind "success"}}{{template "i-check"}}{{else}}{{template "i-alert"}}{{end}}
+  <span>{{.Text}}{{if .LinkURL}} <a href="{{.LinkURL}}">{{.LinkText}}</a>{{end}}</span>
+  <button type="button" class="icon-btn" data-dismiss aria-label="Dismiss message">{{template "i-x"}}</button>
+</div>
+{{end}}
+{{end}}
+
+{{define "delete-dialog"}}
+<dialog class="dialog" id="delete-dialog" aria-labelledby="delete-title">
+  <div class="dialog-body">
+    <div class="dialog-icon">{{template "i-alert"}}</div>
+    <div>
+      <h2 id="delete-title">Delete configuration?</h2>
+      <p><strong class="mono" data-dialog-label></strong><span data-dialog-key-wrap> on key <strong data-dialog-key></strong></span> will be permanently removed. Agents polling for it will stop receiving a configuration. This cannot be undone.</p>
+    </div>
+  </div>
+  <div class="dialog-actions">
+    <button type="button" class="btn btn-secondary" data-dialog-cancel autofocus>Cancel</button>
+    <button type="button" class="btn btn-danger" data-dialog-confirm>Delete</button>
+  </div>
+</dialog>
+{{end}}
+
+{{/* Fields shared by the New and Edit pages. */}}
+{{define "config-fields"}}
+<section class="card form-card">
+  <div class="form-field span-2">
+    <label for="f-uuid" class="lbl">Key</label>
+    {{if or .Keys (not .KeyKnown)}}
+    <select id="f-uuid" name="uuid" class="field" required{{if .IsEdit}} data-original="{{.Original.UUID}}" data-label="key"{{end}}>
+      {{if not .KeyKnown}}<option value="{{.Config.UUID}}" selected>No matching key — {{.Config.UUID}}</option>{{end}}
+      {{range .Keys}}<option value="{{.UUID}}"{{if eq .UUID $.Config.UUID}} selected{{end}}>{{.Name}} — {{.UUID}}</option>{{end}}
+    </select>
+    <p class="hint">Agents authenticate with this key to fetch the configuration.</p>
+    {{else}}
+    <div class="alert alert-warn">{{template "i-alert"}}<span>No keys found in the <code>keys</code> table. Add a key before creating a configuration.</span></div>
+    {{end}}
+  </div>
+
+  <div class="form-field">
+    <label for="f-type" class="lbl">Type</label>
+    <input id="f-type" class="field mono" type="text" name="type" value="{{.Config.Type}}" required maxlength="128" placeholder="e.g. suricata" autocomplete="off" spellcheck="false"{{if .IsEdit}} data-original="{{.Original.Type}}" data-label="type"{{end}}>
+    <p class="hint">Must match the agent's <code>JSONAIR_TYPE</code>.</p>
+  </div>
+
+  <div class="form-field">
+    <label for="f-name" class="lbl">Name</label>
+    <input id="f-name" class="field mono" type="text" name="name" value="{{.Config.Name}}" required maxlength="127" placeholder="e.g. prod.yaml" autocomplete="off" spellcheck="false"{{if .IsEdit}} data-original="{{.Original.Name}}" data-label="name"{{end}}>
+    <p class="hint">Must match the agent's <code>JSONAIR_NAME</code>.</p>
+  </div>
+
+  {{if .IsEdit}}
+  <div class="alert alert-warn span-2" id="rename-warning" role="alert" hidden>{{template "i-alert"}}<span data-rename-text></span></div>
+  {{end}}
+
+  <div class="form-field">
+    <label for="f-reload" class="lbl">Reload <span class="optional">(optional)</span></label>
+    <input id="f-reload" class="field mono" type="text" name="reload" value="{{.Config.Reload}}" maxlength="255" placeholder="reload key or command" autocomplete="off" spellcheck="false">
+  </div>
+
+  <div class="form-field">
+    <label for="f-debug" class="lbl">Debug <span class="optional">(optional)</span></label>
+    <input id="f-debug" class="field mono" type="text" name="debug" value="{{.Config.Debug}}" maxlength="128" placeholder="e.g. INFO" list="debug-levels" autocomplete="off" spellcheck="false">
+    <datalist id="debug-levels">
+      <option value="DEBUG"></option>
+      <option value="INFO"></option>
+      <option value="WARN"></option>
+      <option value="ERROR"></option>
+    </datalist>
+  </div>
+</section>
+
+<section class="card editor" data-editor>
+  <div class="editor-head">
+    <div>
+      <label for="config_data" class="lbl">Configuration data</label>
+      <p class="hint">Any format. Stored base64-encoded and AES-256-GCM encrypted.</p>
+    </div>
+    <div class="verify">
+      <span class="verify-label" id="verify-label">Verify as</span>
+      <div class="seg" role="group" aria-labelledby="verify-label">
+        <button type="button" data-verify="json" aria-pressed="false">JSON</button>
+        <button type="button" data-verify="xml" aria-pressed="false">XML</button>
+        <button type="button" data-verify="yaml" aria-pressed="false" title="YAML accepts plain strings — use JSON or XML for stricter checks">YAML</button>
+      </div>
+    </div>
+  </div>
+  <div class="editor-body">
+    <pre class="editor-gutter" aria-hidden="true" data-gutter>1</pre>
+    {{/* The newline after the opening tag is dropped by the HTML parser, so a
+         leading newline in the config itself is preserved. */}}
+    <textarea id="config_data" name="config_data" class="editor-text" wrap="off" spellcheck="false" autocomplete="off" autocapitalize="off" placeholder="Paste your configuration here…" aria-describedby="editor-keys">
+{{.RawConfig}}</textarea>
+  </div>
+  <div class="editor-status">
+    <span class="verify-status" data-verify-status role="status" aria-live="polite"></span>
+    <span data-stat-lines></span>
+    <span data-stat-bytes></span>
+    <span class="editor-keys" id="editor-keys"><kbd>Tab</kbd> indents · <kbd>Esc</kbd> then <kbd>Tab</kbd> leaves the editor · <kbd>Ctrl</kbd>/<kbd>⌘</kbd> <kbd>S</kbd> saves</span>
+  </div>
+</section>
+{{end}}
+
+{{/* ---------- Icons (inline SVG, inherit currentColor) ---------- */}}
+
+{{define "i-logo"}}<svg class="icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 4c-2 0-3 1-3 3v2c0 1.5-1 3-2 3 1 0 2 1.5 2 3v2c0 2 1 3 3 3"/><path d="M16 4c2 0 3 1 3 3v2c0 1.5 1 3 2 3-1 0-2 1.5-2 3v2c0 2-1 3-3 3"/></svg>{{end}}
+
+{{define "i-plus"}}<svg class="icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>{{end}}
+
+{{define "i-search"}}<svg class="icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>{{end}}
+
+{{define "i-copy"}}<svg class="icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg>{{end}}
+
+{{define "i-trash"}}<svg class="icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/></svg>{{end}}
+
+{{define "i-check"}}<svg class="icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5L19 7"/></svg>{{end}}
+
+{{define "i-x"}}<svg class="icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>{{end}}
+
+{{define "i-alert"}}<svg class="icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 9v4M12 17h.01M10.3 3.9L2.4 18a2 2 0 0 0 1.7 3h15.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>{{end}}
+
+{{define "i-chevron"}}<svg class="icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>{{end}}

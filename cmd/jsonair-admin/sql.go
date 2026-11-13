@@ -33,6 +33,12 @@ type configRow struct {
 	ConfigData string
 	Created    string
 	Updated    string
+
+	// KeyName is the name of the matching row in `keys` ("" when none matches).
+	KeyName string
+	// UpdatedAgo is the age of `updated` in seconds, computed by the database
+	// so the result does not depend on time zone settings.
+	UpdatedAgo int64
 }
 
 type keyRow struct {
@@ -78,17 +84,20 @@ func sqlListConfigs(typeFilter, nameFilter string) ([]configRow, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	query := "SELECT `id`,`uuid`,`type`,`name`,`reload`,`debug`,`updated` FROM `configurations` WHERE 1=1"
+	query := "SELECT c.`id`, c.`uuid`, c.`type`, c.`name`, c.`reload`, c.`debug`, c.`updated`," +
+		" COALESCE((SELECT k.`name` FROM `keys` k WHERE k.`uuid` = c.`uuid` ORDER BY k.`id` LIMIT 1), '')," +
+		" TIMESTAMPDIFF(SECOND, c.`updated`, NOW())" +
+		" FROM `configurations` c WHERE 1=1"
 	args := []any{}
 	if typeFilter != "" {
-		query += " AND `type` LIKE ?"
+		query += " AND c.`type` LIKE ?"
 		args = append(args, "%"+typeFilter+"%")
 	}
 	if nameFilter != "" {
-		query += " AND `name` LIKE ?"
+		query += " AND c.`name` LIKE ?"
 		args = append(args, "%"+nameFilter+"%")
 	}
-	query += " ORDER BY `type`, `name`"
+	query += " ORDER BY c.`type`, c.`name`"
 
 	rows, err := Cfg.DB.QueryContext(ctx, query, args...)
 	if err != nil {
@@ -99,7 +108,7 @@ func sqlListConfigs(typeFilter, nameFilter string) ([]configRow, error) {
 	var results []configRow
 	for rows.Next() {
 		var r configRow
-		if err := rows.Scan(&r.ID, &r.UUID, &r.Type, &r.Name, &r.Reload, &r.Debug, &r.Updated); err != nil {
+		if err := rows.Scan(&r.ID, &r.UUID, &r.Type, &r.Name, &r.Reload, &r.Debug, &r.Updated, &r.KeyName, &r.UpdatedAgo); err != nil {
 			return nil, err
 		}
 		results = append(results, r)
@@ -113,13 +122,28 @@ func sqlGetConfigByID(id int) (*configRow, error) {
 
 	var r configRow
 	err := Cfg.DB.QueryRowContext(ctx,
-		"SELECT `id`,`uuid`,`type`,`name`,`reload`,`debug`,`config_data`,`created`,`updated` FROM `configurations` WHERE `id`=?",
+		"SELECT `id`,`uuid`,`type`,`name`,`reload`,`debug`,`config_data`,`created`,`updated`,"+
+			" TIMESTAMPDIFF(SECOND, `updated`, NOW()) FROM `configurations` WHERE `id`=?",
 		id,
-	).Scan(&r.ID, &r.UUID, &r.Type, &r.Name, &r.Reload, &r.Debug, &r.ConfigData, &r.Created, &r.Updated)
+	).Scan(&r.ID, &r.UUID, &r.Type, &r.Name, &r.Reload, &r.Debug, &r.ConfigData, &r.Created, &r.Updated, &r.UpdatedAgo)
 	if err != nil {
 		return nil, err
 	}
 	return &r, nil
+}
+
+// sqlFindConfigID returns the ID of the configuration with the given unique
+// (uuid, type, name) combination.
+func sqlFindConfigID(uuid, typ, name string) (int, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	var id int
+	err := Cfg.DB.QueryRowContext(ctx,
+		"SELECT `id` FROM `configurations` WHERE `uuid`=? AND `type`=? AND `name`=? LIMIT 1",
+		uuid, typ, name,
+	).Scan(&id)
+	return id, err
 }
 
 func sqlUpdateConfig(id int, uuid, typ, name, reload, debug, encryptedData string) error {

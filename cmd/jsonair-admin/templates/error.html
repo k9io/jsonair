@@ -1,0 +1,13 @@
+{{template "head" .}}
+<body>
+{{if .User}}{{template "nav" .}}{{end}}
+<main class="page page-narrow">
+  <div class="card empty">
+    <p class="empty-status">{{.Status}}</p>
+    <h2>{{.Heading}}</h2>
+    <p>{{.Message}}</p>
+    <a class="btn btn-secondary" href="/configs">Back to configurations</a>
+  </div>
+</main>
+</body>
+</html>

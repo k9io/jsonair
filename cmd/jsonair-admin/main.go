@@ -14,8 +14,6 @@ package main
 import (
 	"context"
 	"crypto/tls"
-	"embed"
-	"html/template"
 	"net"
 	"net/http"
 	"os"
@@ -26,15 +24,8 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-//go:embed templates
-var templateFS embed.FS
-
-func main() {
-	loadEnv()
-	sqlConnect()
-
-	gin.SetMode(gin.ReleaseMode)
-
+// newRouter builds the HTTP handler: middleware, static files and routes.
+func newRouter() *gin.Engine {
 	router := gin.New()
 	router.SetTrustedProxies(nil)
 	router.Use(gin.Recovery())
@@ -45,30 +36,29 @@ func main() {
 		c.Next()
 	})
 
-	router.Use(func(c *gin.Context) {
-		c.Header("X-Frame-Options", "DENY")
-		c.Header("X-Content-Type-Options", "nosniff")
-		c.Header("X-XSS-Protection", "1; mode=block")
-		if Cfg.HTTPTLS {
-			c.Header("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
-		}
-		c.Next()
-	})
+	router.Use(securityHeaders)
+	router.Use(crossOriginGuard)
 
-	tmpl := template.Must(template.New("").ParseFS(templateFS, "templates/*.html"))
-	router.SetHTMLTemplate(tmpl)
+	router.SetHTMLTemplate(loadTemplates())
 
 	router.GET("/health", healthCheck)
+	router.GET("/static/*filepath", serveStatic)
+	router.NoRoute(func(c *gin.Context) {
+		renderError(c, http.StatusNotFound, "Page not found", "There is nothing at this address.")
+	})
 
 	router.GET("/", func(c *gin.Context) {
 		c.Redirect(http.StatusFound, "/configs")
 	})
 	router.GET("/login", getLogin)
 	router.POST("/login", postLogin)
-	router.GET("/logout", getLogout)
+	// Logging out is a POST; old links and bookmarks just land on the list.
+	router.GET("/logout", func(c *gin.Context) {
+		c.Redirect(http.StatusFound, "/configs")
+	})
 
 	auth := router.Group("/")
-	auth.Use(requireAuth())
+	auth.Use(requireAuth(), requireCSRF)
 	{
 		auth.GET("/configs", listConfigs)
 		auth.GET("/configs/new", showNewConfig)
@@ -77,7 +67,19 @@ func main() {
 		auth.POST("/configs/:id/edit", saveEditConfig)
 		auth.POST("/configs/:id/delete", deleteConfig)
 		auth.POST("/validate", validateConfig)
+		auth.GET("/session", getSession)
+		auth.POST("/logout", postLogout)
 	}
+
+	return router
+}
+
+func main() {
+	loadEnv()
+	sqlConnect()
+
+	gin.SetMode(gin.ReleaseMode)
+	router := newRouter()
 
 	server := &http.Server{
 		Handler:           router,

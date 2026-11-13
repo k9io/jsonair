@@ -1,89 +1,96 @@
-<!DOCTYPE html>
-<html>
-<head>
-<meta charset="utf-8">
-<title>JSONAir Admin — Configurations</title>
-<style>
-* { box-sizing: border-box; }
-body { font-family: monospace; margin: 0; padding: 0; background: #f5f5f5; }
-nav { background: #222; color: #eee; padding: 10px 20px; display: flex; align-items: center; gap: 20px; }
-nav strong { color: #fff; }
-nav a { color: #ccc; text-decoration: none; font-size: 0.9em; }
-nav a:hover { color: #fff; }
-.content { padding: 20px; }
-h2 { font-size: 1.1em; margin: 0 0 14px 0; }
-.search { margin-bottom: 14px; }
-.search input[type=text] { padding: 5px 8px; font-family: monospace; border: 1px solid #aaa; width: 160px; }
-.search button, .btn { padding: 5px 12px; font-family: monospace; cursor: pointer; border: 1px solid #aaa; background: #fff; text-decoration: none; color: #000; font-size: 0.9em; }
-.btn-new { background: #2a5; color: #fff; border-color: #2a5; }
-.btn-del { background: #c33; color: #fff; border-color: #c33; font-size: 0.8em; padding: 3px 8px; }
-table { border-collapse: collapse; width: 100%; background: #fff; border: 1px solid #ccc; }
-th, td { border: 1px solid #ddd; padding: 6px 10px; text-align: left; font-size: 0.9em; }
-th { background: #eee; }
-tr:hover { background: #f9f9f9; }
-.success { color: #060; background: #e6ffe6; padding: 8px 12px; border: 1px solid #0a0; margin-bottom: 12px; }
-.error { color: #c00; background: #ffe6e6; padding: 8px 12px; border: 1px solid #c00; margin-bottom: 12px; }
-.uuid { font-size: 0.8em; color: #555; }
-</style>
-</head>
+{{template "head" .}}
 <body>
-<nav>
-  <strong>JSONAir Admin</strong>
-  <a href="/configs">Configurations</a>
-  <a href="/logout">Logout</a>
-</nav>
-<div class="content">
-  <h2>Configurations</h2>
-  {{if .Message}}<div class="success">{{.Message}}</div>{{end}}
-  {{if .Error}}<div class="error">{{.Error}}</div>{{end}}
+{{template "nav" .}}
+<main class="page">
 
-  <div class="search">
-    <form method="GET" action="/configs" style="display:inline-flex; gap:8px; align-items:center; flex-wrap:wrap;">
-      <span>Type:</span>
-      <input type="text" name="type" value="{{.TypeFilter}}" placeholder="filter...">
-      <span>Name:</span>
-      <input type="text" name="name" value="{{.NameFilter}}" placeholder="filter...">
-      <button type="submit">Search</button>
-      <a href="/configs" class="btn">Clear</a>
-    </form>
+  <div class="page-head">
+    <div>
+      <h1>Configurations</h1>
+      <p class="subtitle">
+        {{if .Filtered}}{{.Count}} matching {{plural .Count "configuration" "configurations"}}
+        {{else}}{{.Count}} {{plural .Count "configuration" "configurations"}} across {{.KeyCount}} {{plural .KeyCount "key" "keys"}}{{end}}
+      </p>
+    </div>
+    <a class="btn btn-primary" href="/configs/new">{{template "i-plus"}}New configuration</a>
   </div>
 
-  <p><a href="/configs/new" class="btn btn-new">+ New Configuration</a></p>
+  {{template "flash" .}}
 
-  {{if .Configs}}
-  <table>
-    <tr>
-      <th>ID</th>
-      <th>Key UUID</th>
-      <th>Type</th>
-      <th>Name</th>
-      <th>Reload</th>
-      <th>Debug</th>
-      <th>Updated</th>
-      <th>Actions</th>
-    </tr>
-    {{range .Configs}}
-    <tr>
-      <td>{{.ID}}</td>
-      <td class="uuid">{{.UUID}}</td>
-      <td>{{.Type}}</td>
-      <td>{{.Name}}</td>
-      <td>{{.Reload}}</td>
-      <td>{{.Debug}}</td>
-      <td>{{.Updated}}</td>
-      <td style="white-space:nowrap;">
-        <a href="/configs/{{.ID}}/edit" class="btn">Edit</a>
-        <form method="POST" action="/configs/{{.ID}}/delete" style="display:inline;"
-              onsubmit="return confirm('Delete this configuration?');">
-          <button type="submit" class="btn btn-del">Delete</button>
-        </form>
-      </td>
-    </tr>
+  <div class="card">
+    <form class="toolbar" method="GET" action="/configs" role="search">
+      <div class="form-field">
+        <label for="q-type" class="lbl-sm">Type</label>
+        <input id="q-type" class="field" type="search" name="type" value="{{.TypeFilter}}" placeholder="e.g. suricata" autocomplete="off" spellcheck="false">
+      </div>
+      <div class="form-field">
+        <label for="q-name" class="lbl-sm">Name</label>
+        <input id="q-name" class="field" type="search" name="name" value="{{.NameFilter}}" placeholder="e.g. prod.yaml" autocomplete="off" spellcheck="false">
+      </div>
+      <button type="submit" class="btn btn-secondary">{{template "i-search"}}Search</button>
+      {{if .Filtered}}<a href="/configs" class="toolbar-clear">Clear filters</a>{{end}}
+    </form>
+
+    {{if .Configs}}
+    <div class="table-scroll">
+      <table class="table">
+        <thead>
+          <tr>
+            <th scope="col">Type</th>
+            <th scope="col">Name</th>
+            <th scope="col">Key</th>
+            <th scope="col">Reload</th>
+            <th scope="col">Debug</th>
+            <th scope="col">Updated</th>
+            <th scope="col"><span class="sr-only">Actions</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          {{range .Configs}}
+          <tr>
+            <td><span class="pill mono">{{.Type}}</span></td>
+            <td><a class="config-name mono" href="/configs/{{.ID}}/edit">{{.Name}}</a></td>
+            <td>
+              <div class="key-cell">
+                <div class="key-text">
+                  {{if .KeyName}}<span class="key-name">{{.KeyName}}</span>{{else}}<span class="key-name key-missing">No matching key</span>{{end}}
+                  <span class="mono key-uuid" title="{{.UUID}}">{{shortUUID .UUID}}</span>
+                </div>
+                {{if .UUID}}<button type="button" class="icon-btn" data-copy="{{.UUID}}" aria-label="Copy key UUID" title="Copy key UUID">{{template "i-copy"}}</button>{{end}}
+              </div>
+            </td>
+            <td class="mono reload">{{if .Reload}}{{.Reload}}{{else}}<span class="dash" aria-label="none">—</span>{{end}}</td>
+            <td>{{if .Debug}}<span class="badge {{levelClass .Debug}}">{{.Debug}}</span>{{else}}<span class="dash" aria-label="none">—</span>{{end}}</td>
+            <td class="nowrap muted"><time datetime="{{isoTime .Updated}}" title="{{.Updated}}">{{ago .UpdatedAgo .Updated}}</time></td>
+            <td class="actions">
+              <div class="row-actions">
+                <a class="btn btn-secondary btn-sm" href="/configs/{{.ID}}/edit">Edit</a>
+                <form method="POST" action="/configs/{{.ID}}/delete" data-confirm-delete data-label="{{.Type}} / {{.Name}}" data-key="{{.KeyName}}">
+                  <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+                  <button type="submit" class="icon-btn icon-btn-danger" aria-label="Delete {{.Type}} / {{.Name}}" title="Delete">{{template "i-trash"}}</button>
+                </form>
+              </div>
+            </td>
+          </tr>
+          {{end}}
+        </tbody>
+      </table>
+    </div>
+    {{else if .Filtered}}
+    <div class="empty">
+      <h2>No matches</h2>
+      <p>No configurations match
+        {{if .TypeFilter}}type <code>{{.TypeFilter}}</code>{{end}}{{if and .TypeFilter .NameFilter}} and {{end}}{{if .NameFilter}}name <code>{{.NameFilter}}</code>{{end}}.</p>
+      <a class="btn btn-secondary" href="/configs">Clear filters</a>
+    </div>
+    {{else if not .LoadError}}
+    <div class="empty">
+      <h2>No configurations yet</h2>
+      <p>Create a configuration to start serving it to agents.</p>
+      <a class="btn btn-primary" href="/configs/new">{{template "i-plus"}}New configuration</a>
+    </div>
     {{end}}
-  </table>
-  {{else}}
-  <p>No configurations found.</p>
-  {{end}}
-</div>
+  </div>
+</main>
+{{template "delete-dialog"}}
 </body>
 </html>
