@@ -41,6 +41,11 @@ type adminConfig struct {
 	HTTPTLS    bool
 	HTTPCert   string
 	HTTPKey    string
+
+	// PasswordLogin is true when ADMIN_USERNAME and ADMIN_PASSWORD are set.
+	PasswordLogin bool
+	// OIDC is nil unless single sign-on is configured (OIDC_ISSUER is set).
+	OIDC *oidcConfig
 }
 
 var Cfg adminConfig
@@ -48,8 +53,21 @@ var Cfg adminConfig
 func loadEnv() {
 	_ = godotenv.Load()
 
-	Cfg.AdminUsername = requireEnv("ADMIN_USERNAME")
-	Cfg.AdminPassword = requireEnv("ADMIN_PASSWORD")
+	Cfg.OIDC = loadOIDCEnv()
+
+	// The username/password login is required unless OIDC is configured, in
+	// which case it is optional (for example as an emergency fallback).
+	Cfg.AdminUsername = os.Getenv("ADMIN_USERNAME")
+	Cfg.AdminPassword = os.Getenv("ADMIN_PASSWORD")
+	switch {
+	case Cfg.AdminUsername != "" && Cfg.AdminPassword != "":
+		Cfg.PasswordLogin = true
+	case Cfg.AdminUsername != "" || Cfg.AdminPassword != "":
+		fatalf("set both ADMIN_USERNAME and ADMIN_PASSWORD, or neither")
+	case Cfg.OIDC == nil:
+		fatalf("ADMIN_USERNAME and ADMIN_PASSWORD must be set unless OIDC_ISSUER is configured")
+	}
+
 	Cfg.SessionSecret = []byte(requireEnv("ADMIN_SESSION_SECRET"))
 	Cfg.ConfigEncryptKey = cry.DeriveKey([]byte(requireEnv("CONFIG_ENCRYPT_SECRET")))
 

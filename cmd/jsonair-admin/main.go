@@ -14,6 +14,7 @@ package main
 import (
 	"context"
 	"crypto/tls"
+	"fmt"
 	"net"
 	"net/http"
 	"os"
@@ -52,6 +53,8 @@ func newRouter() *gin.Engine {
 	})
 	router.GET("/login", getLogin)
 	router.POST("/login", postLogin)
+	router.GET("/login/oidc", getOIDCLogin)
+	router.GET("/auth/callback", getOIDCCallback)
 	// Logging out is a POST; old links and bookmarks just land on the list.
 	router.GET("/logout", func(c *gin.Context) {
 		c.Redirect(http.StatusFound, "/configs")
@@ -80,6 +83,18 @@ func main() {
 
 	gin.SetMode(gin.ReleaseMode)
 	router := newRouter()
+
+	if Cfg.OIDC != nil {
+		// Discover the provider early so misconfiguration shows up in the log
+		// at startup. Failure is not fatal: sign-in retries discovery.
+		go func() {
+			if _, err := Cfg.OIDC.getProvider(); err != nil {
+				fmt.Fprintf(os.Stderr, "WARN: OIDC discovery for %s failed (will retry at sign-in): %v\n", Cfg.OIDC.Issuer, err)
+			} else {
+				println("INFO: OIDC single sign-on enabled via", Cfg.OIDC.Issuer)
+			}
+		}()
+	}
 
 	server := &http.Server{
 		Handler:           router,

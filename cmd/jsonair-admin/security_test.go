@@ -34,6 +34,8 @@ func testRouter(t *testing.T) *gin.Engine {
 	Cfg.AdminPassword = "secret"
 	Cfg.SessionSecret = []byte("test-session-secret")
 	Cfg.HTTPTLS = false
+	Cfg.PasswordLogin = true
+	Cfg.OIDC = nil
 	return newRouter()
 }
 

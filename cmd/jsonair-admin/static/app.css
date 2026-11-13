@@ -749,4 +749,18 @@ select.field { padding-right: 28px; max-width: 100%; text-overflow: ellipsis; }
   gap: 16px;
 }
 .login-card .flash { margin: 0; }
+.login-form { display: flex; flex-direction: column; gap: 16px; }
+.login-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.login-divider::before,
+.login-divider::after {
+  content: "";
+  flex: 1;
+  border-top: 1px solid var(--border);
+}
 .login-foot { margin: 0; font-size: 12px; color: var(--muted); }

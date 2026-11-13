@@ -6,25 +6,38 @@
     <h1>Sign in to JSONAir Admin</h1>
   </div>
 
-  <form class="card login-card" method="POST" action="/login" data-login>
+  <div class="card login-card">
     {{if .Error}}
     <div class="flash flash-error" role="alert">{{template "i-alert"}}<span>{{.Error}}</span></div>
     {{else if .Expired}}
     <div class="flash flash-info" role="status">{{template "i-alert"}}<span>Your session has expired. Sign in again to continue.</span></div>
     {{end}}
 
-    <div class="form-field">
-      <label for="l-user" class="lbl">Username</label>
-      <input id="l-user" class="field field-lg" type="text" name="username" value="{{.Username}}" required autocomplete="username" autocapitalize="off" spellcheck="false"{{if not .Username}} autofocus{{end}}{{if .Error}} aria-invalid="true"{{end}}>
-    </div>
+    {{if .SSOName}}
+    {{/* A link, not a form: the CSP only allows forms to post to this site. */}}
+    <a class="btn {{if .PasswordLogin}}btn-secondary{{else}}btn-primary{{end}} btn-lg btn-block" href="/login/oidc">{{template "i-key"}}Sign in with {{.SSOName}}</a>
+    {{end}}
 
-    <div class="form-field">
-      <label for="l-pass" class="lbl">Password</label>
-      <input id="l-pass" class="field field-lg" type="password" name="password" required autocomplete="current-password"{{if .Username}} autofocus{{end}}{{if .Error}} aria-invalid="true"{{end}}>
-    </div>
+    {{if and .SSOName .PasswordLogin}}
+    <div class="login-divider" role="separator"><span>or use the admin password</span></div>
+    {{end}}
 
-    <button type="submit" class="btn btn-primary btn-lg btn-block">Sign in</button>
-  </form>
+    {{if .PasswordLogin}}
+    <form class="login-form" method="POST" action="/login" data-login>
+      <div class="form-field">
+        <label for="l-user" class="lbl">Username</label>
+        <input id="l-user" class="field field-lg" type="text" name="username" value="{{.Username}}" required autocomplete="username" autocapitalize="off" spellcheck="false"{{if and (not .Username) (not .SSOName)}} autofocus{{end}}{{if and .Error .Username}} aria-invalid="true"{{end}}>
+      </div>
+
+      <div class="form-field">
+        <label for="l-pass" class="lbl">Password</label>
+        <input id="l-pass" class="field field-lg" type="password" name="password" required autocomplete="current-password"{{if .Username}} autofocus{{end}}{{if and .Error .Username}} aria-invalid="true"{{end}}>
+      </div>
+
+      <button type="submit" class="btn btn-primary btn-lg btn-block">Sign in</button>
+    </form>
+    {{end}}
+  </div>
 
   <p class="login-foot">Sessions last 4 hours.</p>
 </main>

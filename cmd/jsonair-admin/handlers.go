@@ -70,9 +70,10 @@ func requireAuth() gin.HandlerFunc {
 	}
 }
 
-func issueSession(c *gin.Context) {
+// issueSession signs the user in. subject is shown as "Signed in as".
+func issueSession(c *gin.Context, subject string) {
 	claims := jwt.MapClaims{
-		"sub": Cfg.AdminUsername,
+		"sub": subject,
 		"exp": time.Now().Add(sessionTTL).Unix(),
 		"iat": time.Now().Unix(),
 	}
@@ -123,27 +124,40 @@ func credentialsMatch(username, password string) bool {
 	return eq(username, Cfg.AdminUsername)&eq(password, Cfg.AdminPassword) == 1
 }
 
+// loginData adds which sign-in methods are enabled to the login page data.
+func loginData(h gin.H) gin.H {
+	h["Title"] = "Sign in"
+	h["PasswordLogin"] = Cfg.PasswordLogin
+	if Cfg.OIDC != nil {
+		h["SSOName"] = Cfg.OIDC.ProviderName
+	}
+	return h
+}
+
 func getLogin(c *gin.Context) {
-	render(c, http.StatusOK, "login.html", gin.H{
-		"Title":   "Sign in",
+	render(c, http.StatusOK, "login.html", loginData(gin.H{
 		"Expired": c.Query("expired") == "1",
-	})
+	}))
 }
 
 func postLogin(c *gin.Context) {
+	if !Cfg.PasswordLogin {
+		renderLoginError(c, http.StatusNotFound, "Password sign-in is disabled. Use single sign-on.")
+		return
+	}
+
 	username := c.PostForm("username")
 	password := c.PostForm("password")
 
 	if !credentialsMatch(username, password) {
-		render(c, http.StatusUnauthorized, "login.html", gin.H{
-			"Title":    "Sign in",
+		render(c, http.StatusUnauthorized, "login.html", loginData(gin.H{
 			"Error":    "Invalid username or password.",
 			"Username": username,
-		})
+		}))
 		return
 	}
 
-	issueSession(c)
+	issueSession(c, Cfg.AdminUsername)
 	c.Redirect(http.StatusFound, "/configs")
 }
 

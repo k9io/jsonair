@@ -57,9 +57,9 @@ func TestTemplatesRender(t *testing.T) {
 		{"new no keys", "new.html", formData("New configuration", nil, configRow{}, "", nil, nil), []string{"No keys found", "disabled>Create configuration"}},
 		{"edit", "edit.html", edit, []string{"Save changes", `data-original="suricata"`, "rename-warning", "Sep 3, 2026", "<textarea", "\n\nleading newline"}},
 		{"edit failed save", "edit.html", editFailed, []string{"No matching key — unknown-uuid", "data-start-dirty", "Open the existing configuration"}},
-		{"login", "login.html", gin.H{"Title": "Sign in"}, []string{"Sign in to JSONAir Admin", "autofocus"}},
-		{"login error", "login.html", gin.H{"Title": "Sign in", "Error": "Invalid username or password.", "Username": "admin"}, []string{"Invalid username", `aria-invalid="true"`, `value="admin"`}},
-		{"login expired", "login.html", gin.H{"Title": "Sign in", "Expired": true}, []string{"session has expired"}},
+		{"login", "login.html", gin.H{"PasswordLogin": true, "Title": "Sign in"}, []string{"Sign in to JSONAir Admin", "autofocus"}},
+		{"login error", "login.html", gin.H{"PasswordLogin": true, "Title": "Sign in", "Error": "Invalid username or password.", "Username": "admin"}, []string{"Invalid username", `aria-invalid="true"`, `value="admin"`}},
+		{"login expired", "login.html", gin.H{"PasswordLogin": true, "Title": "Sign in", "Expired": true}, []string{"session has expired"}},
 		{"error", "error.html", gin.H{"Title": "Not found", "Status": 404, "Heading": "Configuration not found", "Message": "gone"}, []string{"404", "Configuration not found"}},
 	}
 
